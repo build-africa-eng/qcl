@@ -13,30 +13,38 @@ type Props = {
 
 export function ExportButtons({ qcl, html, ast }: Props) {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   const download = (data: string | Uint8Array, filename: string, type: string) => {
     const blob = new Blob([data], { type });
     const url = URL.createObjectURL(blob);
-
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;
-    link.style.display = 'none';
-
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
     URL.revokeObjectURL(url);
+    setToast(`⬇️ Downloaded ${filename}`);
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert('Copied to clipboard!');
+    setCopied(true);
+    setToast('📋 Copied to clipboard!');
+    setTimeout(() => setCopied(false), 1500);
   };
 
+  const showToast = toast && (
+    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-black text-white px-4 py-2 rounded shadow-lg z-50 text-sm animate-fadeIn">
+      {toast}
+    </div>
+  );
+
   return (
-    <div className="flex flex-wrap gap-2 mt-4">
+    <div className="flex flex-wrap gap-2 mt-4 relative">
+      {showToast}
       <button
         onClick={() => download(qcl, 'qcl-source.qcl', 'text/plain')}
         className="px-3 py-1 border rounded bg-blue-100 dark:bg-blue-800 dark:text-white hover:bg-blue-200 dark:hover:bg-blue-700"
@@ -81,11 +89,11 @@ export function ExportButtons({ qcl, html, ast }: Props) {
             const url = await res.text();
             const cleanUrl = url.trim();
             setShareUrl(cleanUrl);
-            alert('QCL pasted to:\n' + cleanUrl);
+            setToast('🔗 Uploaded to Termbin!');
             navigator.clipboard.writeText(cleanUrl);
           } catch (err) {
-            alert('Failed to upload to termbin.');
             console.error(err);
+            setToast('❌ Failed to upload to Termbin');
           }
         }}
         className="px-3 py-1 border rounded bg-purple-100 dark:bg-purple-800 dark:text-white hover:bg-purple-200 dark:hover:bg-purple-700"
@@ -109,7 +117,7 @@ export function ExportButtons({ qcl, html, ast }: Props) {
               onClick={() => copyToClipboard(shareUrl)}
               className="ml-2 text-xs px-2 py-0.5 border rounded bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500"
             >
-              📋 Copy
+              {copied ? '✅ Copied' : '📋 Copy'}
             </button>
           </p>
           <div className="flex justify-center mt-2">
