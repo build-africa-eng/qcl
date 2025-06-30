@@ -11,8 +11,8 @@
   <div id="qcl-container">Loading QCL App...</div>
 
   <script type="module">
-    import { parseQCL } from './js/qcl-parser.js';
-    import { renderHTML } from './js/qcl-renderer.js';
+    import { parseQCL } from './qcl-parser.js';
+    import { renderHTML } from './qcl-renderer.js';
 
     const qclSource = await (await fetch('./pages/index.qcl')).text();
 
