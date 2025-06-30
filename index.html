@@ -1,32 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="QCL: A new markup language unifying structure, style, interactivity, and data." />
-  <title>QCL App</title>
-
-  <!-- ✅ Tailwind CSS via CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body>
-  <div id="qcl-container">Loading QCL App...</div>
-
-  <script type="module">
-    import { parseQCL } from './qcl-parser.js';
-    import { renderHTML } from './qcl-renderer.js';
-
-    const qclSource = await (await fetch('./pages/index.qcl')).text();
-
-    try {
-      const ast = parseQCL(qclSource);
-      const html = renderHTML(ast);
-      document.getElementById('qcl-container').innerHTML = html;
-    } catch (err) {
-      console.error("❌ QCL Error:", err);
-      document.getElementById('qcl-container').innerHTML =
-        `<pre style="color:red;">${err.message}</pre>`;
-    }
-  </script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="QCL: A new markup language unifying structure, style, interactivity, and data." />
+    <title>QCL App</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body class="bg-gray-100 text-gray-900 p-6">
+    <main id="qcl-container" class="max-w-2xl mx-auto">
+      Loading QCL App...
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
 </html>
