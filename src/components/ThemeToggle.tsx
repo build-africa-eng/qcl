@@ -1,14 +1,23 @@
-// src/components/ThemeToggle.tsx
+'use client';
+
 import { useEffect, useState } from 'react';
 
 export default function ThemeToggle() {
   const [dark, setDark] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true); // Avoid SSR issues
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     const classList = document.documentElement.classList;
     if (dark) classList.add('dark');
     else classList.remove('dark');
-  }, [dark]);
+  }, [dark, mounted]);
+
+  if (!mounted) return null; // Avoid hydration mismatch
 
   return (
     <button
