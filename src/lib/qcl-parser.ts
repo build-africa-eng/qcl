@@ -7,6 +7,7 @@ export type QCLNode = {
   props?: Record<string, string>;
   content?: string;
   body?: QCLNode[];
+  slotName?: string; 
 };
 
 export function parseQCL(source: string): QCLNode {
@@ -116,6 +117,10 @@ if (currentComponent && indent <= stack[stack.length - 1].indent) {
         if (k && v) props[k] = v;
       }
     }
+    // Detect slot name (for slot nodes or usage)
+if (tag.toLowerCase() === 'slot' && props.name) {
+  node.slotName = props.name;
+}
 
     const node: QCLNode = {
       type: tag.charAt(0).toUpperCase() + tag.slice(1),
@@ -127,10 +132,17 @@ if (currentComponent && indent <= stack[stack.length - 1].indent) {
   // === If it's a known component, expand ===
 if (components[tag]) {
   const def = components[tag];
-  const clone = JSON.parse(JSON.stringify(def.body));
 
-  // ⬇️ Inject props + slot content
-  const injected = injectProps(clone, props, node.body);
+  // Group children by slot name (default is '_default')
+  const slotGroups: Record<string, QCLNode[]> = {};
+  for (const child of node.body || []) {
+    const slot = child.slotName || '_default';
+    if (!slotGroups[slot]) slotGroups[slot] = [];
+    slotGroups[slot].push(child);
+  }
+
+  const clone = JSON.parse(JSON.stringify(def.body));
+  const injected = injectProps(clone, props, slotGroups);
   node.body = injected;
 }
 
@@ -148,15 +160,19 @@ if (components[tag]) {
 }
 
 // Replace {name} with props["name"] inside component body
-function injectProps(body: QCLNode[], props: Record<string, string>, slotContent: QCLNode[] = []): QCLNode[] {
+function injectProps(
+  body: QCLNode[],
+  props: Record<string, string>,
+  slotGroups: Record<string, QCLNode[]> = {}
+): QCLNode[] {
   const traverse = (node: QCLNode): QCLNode => {
     if (node.type === 'Slot') {
-      // Replace slot node with the actual content
-      return {
-        type: 'SlotWrapper',
-        body: slotContent.map(traverse), // recursively traverse children
-      };
-    }
+  const slot = node.slotName || '_default';
+  return {
+    type: 'SlotWrapper',
+    body: (slotGroups[slot] || []).map(traverse),
+  };
+}
 
     const newNode: QCLNode = {
       ...node,
