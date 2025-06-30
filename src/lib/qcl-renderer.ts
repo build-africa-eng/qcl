@@ -68,6 +68,14 @@ export function renderHTML(ast: QCLNode): string {
   `;
 }
 
+function safeEval(expr: string, state: Record<string, any>) {
+  try {
+    return Function('state', `with (state) { return (${expr}); }`)(state);
+  } catch (e) {
+    return `{${expr}}`; // fallback if broken
+  }
+}
+
 function renderNode(node: QCLNode): string {
   const styles: string[] = [];
   const attrs: string[] = [];
@@ -91,7 +99,9 @@ function renderNode(node: QCLNode): string {
 
   // === Content with state injection ===
   const rawContent = (node.content || '').replace(/`/g, '\\`');
-  const content = rawContent.replace(/\{(\w+)\}/g, (_, v) => `\${state["${v}"] !== undefined ? state["${v}"] : \`{${v}}\`}`);
+  const content = rawContent.replace(/\{([^}]+)\}/g, (_, expr) => {
+  return `\${safeEval(\`${expr.trim()}\`, state)}`;
+});
 
   // === Recursively render children ===
   const children = (node.body || []).map(renderNode).join('\n');
