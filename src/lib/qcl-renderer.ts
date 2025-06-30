@@ -2,9 +2,8 @@ import type { QCLNode } from './qcl-parser';
 
 export function renderHTML(ast: QCLNode): string {
   const stateVars = (ast.body || [])
-    .filter(n => n.type === "State")
-    .map(n => (n.name ? `"${n.name}": ${JSON.stringify(n.value)}` : ''))
-    .filter(Boolean)
+    .filter(n => n.type === "State" && typeof n.name === "string")
+    .map(n => `"${n.name}": ${JSON.stringify(n.value)}`)
     .join(",\n");
 
   const htmlContent = (ast.body || [])
@@ -13,7 +12,7 @@ export function renderHTML(ast: QCLNode): string {
     .join('\n');
 
   return `
-    <h1 class="text-2xl font-bold mb-6">${ast.title}</h1>
+    <h1 class="text-2xl font-bold mb-6">${escapeHTML(ast.title || '')}</h1>
     <div id="qcl-app"></div>
     <script type="module">
       (() => {
@@ -35,6 +34,7 @@ export function renderHTML(ast: QCLNode): string {
             document.getElementById('qcl-app').appendChild(errorDiv);
           }
         }
+
         window.run = run;
 
         function render() {
@@ -52,22 +52,29 @@ function renderNode(node: QCLNode): string {
   const styles: string[] = [];
   const attrs: string[] = [];
 
-  for (const [key, val] of Object.entries(node.props || {})) {
+  const props = node.props || {};
+  const tagType = node.type;
+
+  for (const [key, val] of Object.entries(props)) {
     if (key === 'bg') styles.push(`background-color:${val}`);
     if (key === 'padding') styles.push(`padding:${val}px`);
     if (key === 'size') styles.push(`font-size:${val}px`);
     if (key === 'weight') styles.push(`font-weight:${val}`);
-    if (key === 'action') attrs.push(`onclick="window.run('${val.replace(/'/g, "\\'")}')"`);
+    if (key === 'action') {
+      const safeAction = val.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      attrs.push(`onclick="window.run('${safeAction}')"`); 
+    }
   }
 
   const styleStr = styles.length ? ` style="${styles.join(';')}"` : '';
   const attrStr = attrs.length ? ' ' + attrs.join(' ') : '';
 
-  const rawContent = (node.content || '').replace(/`/g, '\\`');
+  const rawContent = (node.content || '').replace(/`/g, '\\`'); // escape template backticks
   const content = rawContent.replace(/\{(\w+)\}/g, (_, v) => `\${state["${v}"] !== undefined ? state["${v}"] : \`{${v}}\`}`);
+
   const children = (node.body || []).map(renderNode).join('\n');
 
-  switch (node.type) {
+  switch (tagType) {
     case 'Box':
       return `<div${styleStr} class="rounded p-4 shadow-sm mb-4">${children}</div>`;
     case 'Text':
@@ -77,4 +84,11 @@ function renderNode(node: QCLNode): string {
     default:
       return `<div${styleStr}>${content}${children}</div>`;
   }
+}
+
+// Optional: Simple HTML escaping for title
+function escapeHTML(str: string): string {
+  return str.replace(/[&<>"']/g, tag =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[tag] || tag)
+  );
 }
