@@ -1,6 +1,7 @@
 // src/lib/qcl-parser.ts
 export type QCLNode = {
   type: string;
+  title?: string;
   name?: string;
   value?: string | number;
   props?: Record<string, string>;
@@ -11,8 +12,8 @@ export type QCLNode = {
 export function parseQCL(source: string): QCLNode {
   const lines = source.split('\n').filter(line => line.trim() !== '');
 
-  const root = { type: "Page", title: "", body: [] };
-  const stack = [{ indent: -1, node: root }];
+  const root: QCLNode = { type: "Page", title: "", body: [] };
+  const stack: { indent: number; node: QCLNode }[] = [{ indent: -1, node: root }];
 
   for (let rawLine of lines) {
     const indent = rawLine.search(/\S/);
@@ -29,7 +30,9 @@ export function parseQCL(source: string): QCLNode {
       const match = line.match(/^state (\w+):\s*(.+)$/);
       if (match) {
         const [, name, value] = match;
-        stack[stack.length - 1].node.body.push({
+        const current = stack[stack.length - 1].node;
+        if (!current.body) current.body = [];
+        current.body.push({
           type: "State",
           name,
           value: /^\d+(\.\d+)?$/.test(value) ? Number(value) : value.replace(/^"(.*)"$/, '$1')
@@ -39,7 +42,7 @@ export function parseQCL(source: string): QCLNode {
     }
 
     const [tag] = line.split(/\s+/);
-    const props = {};
+    const props: Record<string, string> = {};
     let content = '';
 
     if (line.includes(':')) {
@@ -52,7 +55,7 @@ export function parseQCL(source: string): QCLNode {
       }
     }
 
-    const node = {
+    const node: QCLNode = {
       type: tag.charAt(0).toUpperCase() + tag.slice(1),
       props,
       content,
@@ -63,7 +66,9 @@ export function parseQCL(source: string): QCLNode {
       stack.pop();
     }
 
-    stack[stack.length - 1].node.body.push(node);
+    const parent = stack[stack.length - 1].node;
+    if (!parent.body) parent.body = [];
+    parent.body.push(node);
     stack.push({ indent, node });
   }
 
