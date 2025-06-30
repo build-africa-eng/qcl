@@ -1,42 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>QCL Demo</title>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="QCL: A new markup language unifying structure, style, interactivity, and data.">
+  <title>QCL App</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    button { padding: 6px 12px; margin-top: 8px; }
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 1rem;
+      background: #f4f4f4;
+      color: #222;
+    }
+    button {
+      padding: 8px 14px;
+      font-size: 16px;
+    }
   </style>
 </head>
 <body>
-  <h1>Loading QCL App...</h1>
-  <div id="qcl-app"></div>
+  <div id="qcl-app">Loading QCL App...</div>
 
   <script type="module">
-    try {
-      console.log("🔍 Script running...");
+    // Delay rendering to allow initial paint
+    setTimeout(async () => {
+      try {
+        const parser = await import('./qcl-parser.js');
+        const renderer = await import('./qcl-renderer.js');
 
-      const parserModule = await import('./qcl-parser.js');
-      const rendererModule = await import('./qcl-renderer.js');
+        const source = await (await fetch('./pages/index.qcl')).text();
+        const ast = parser.parseQCL(source);
+        const html = renderer.renderHTML(ast);
 
-      const qclSource = await (await fetch('./pages/index.qcl')).text();
-      console.log("📄 QCL Source:", qclSource);
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
 
-      const ast = parserModule.parseQCL(qclSource);
-      console.log("🌳 Parsed AST:", ast);
-
-      const output = rendererModule.renderHTML(ast);
-      console.log("🧱 Rendered HTML:", output);
-
-      const temp = document.createElement('div');
-      temp.innerHTML = output;
-
-      const target = document.getElementById('qcl-app');
-      target.replaceWith(...temp.childNodes);
-    } catch (err) {
-      console.error("❌ QCL App Error:", err);
-      document.body.innerHTML = `<pre style="color:red;">${err.message}</pre>`;
-    }
+        const target = document.getElementById('qcl-app');
+        target.replaceWith(...temp.childNodes);
+      } catch (err) {
+        console.error("❌ QCL App Error:", err);
+        document.body.innerHTML = `<pre style="color:red;">${err.message}</pre>`;
+      }
+    }, 50);
   </script>
 </body>
 </html>
