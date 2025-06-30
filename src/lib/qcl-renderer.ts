@@ -2,12 +2,12 @@ import type { QCLNode } from './qcl-parser';
 
 export function renderHTML(ast: QCLNode): string {
   const stateVars = (ast.body || [])
-    .filter(n => n.type === "State" && typeof n.name === "string")
+    .filter(n => n.type === 'State' && typeof n.name === 'string')
     .map(n => `"${n.name}": ${JSON.stringify(n.value)}`)
-    .join(",\n");
+    .join(',\n');
 
   const htmlContent = (ast.body || [])
-    .filter(n => n.type !== "State")
+    .filter(n => n.type !== 'State')
     .map(renderNode)
     .join('\n');
 
@@ -19,18 +19,8 @@ export function renderHTML(ast: QCLNode): string {
         ${stateVars}
       };
 
-      function safeEval(expr, state) {
-        try {
-          return Function("state", '"use strict"; with (state) { return (' + expr + ') }')(state);
-        } catch (e) {
-          return '{' + expr + '}';
-        }
-      }
-
       function render() {
-        const html = \`${htmlContent}\`.replace(/\\{([^}]+)\\}/g, (_, expr) => {
-          return safeEval(expr.trim(), state);
-        });
+        const html = \`${htmlContent}\`;
         document.getElementById("qcl-app").innerHTML = html;
         bindInputs();
       }
@@ -54,7 +44,6 @@ export function renderHTML(ast: QCLNode): string {
         document.querySelectorAll('[data-bind]').forEach(el => {
           const name = el.getAttribute('data-bind');
           if (!name) return;
-
           el.value = state[name] || '';
           el.oninput = e => {
             state[name] = e.target.value;
@@ -64,6 +53,7 @@ export function renderHTML(ast: QCLNode): string {
 
         document.querySelectorAll('[data-select]').forEach(el => {
           const name = el.getAttribute('data-select');
+          if (!name) return;
           el.value = state[name] || '';
           el.onchange = e => {
             state[name] = e.target.value;
@@ -72,18 +62,18 @@ export function renderHTML(ast: QCLNode): string {
         });
       }
 
+      function safeEval(expr, state) {
+        try {
+          return Function('state', \`with (state) { return (\${expr}); }\`)(state);
+        } catch {
+          return '{' + expr + '}';
+        }
+      }
+
       window.run = run;
       render();
     <\/script>
   `;
-}
-
-function safeEval(expr: string, state: Record<string, any>) {
-  try {
-    return Function('state', `"use strict"; with (state) { return (${expr}); }`)(state);
-  } catch (e) {
-    return `{${expr}}`; // fallback if broken
-  }
 }
 
 function renderNode(node: QCLNode): string {
@@ -92,6 +82,12 @@ function renderNode(node: QCLNode): string {
   const props = node.props || {};
   const tagType = node.type;
 
+  // === SlotWrapper: render its children directly ===
+  if (tagType === 'SlotWrapper') {
+    return (node.body || []).map(renderNode).join('\n');
+  }
+
+  // === Collect inline styles and actions ===
   for (const [key, val] of Object.entries(props)) {
     if (key === 'bg') styles.push(`background-color:${val}`);
     if (key === 'padding') styles.push(`padding:${val}px`);
@@ -106,32 +102,31 @@ function renderNode(node: QCLNode): string {
   const styleStr = styles.length ? ` style="${styles.join(';')}"` : '';
   const attrStr = attrs.length ? ' ' + attrs.join(' ') : '';
 
+  // === Interpolate content with state values ===
   const rawContent = (node.content || '').replace(/`/g, '\\`');
   const content = rawContent.replace(/\{([^}]+)\}/g, (_, expr) => {
     return `\${safeEval(\`${expr.trim()}\`, state)}`;
   });
 
+  // === Children rendering ===
   const children = (node.body || []).map(renderNode).join('\n');
 
+  // === Conditional rendering (If) ===
   if (tagType === 'If') {
     const cond = props.condition || 'false';
-    return `\${safeEval(\`${cond}\`, state) ? \`${children}\` : ''}`;
+    return `\${${cond} ? \`${children}\` : ''}`;
   }
 
+  // === Loop rendering (For) ===
   if (tagType === 'For') {
     const loopItem = props.item || 'item';
     const loopList = props.in || '[]';
-    return `\${(() => {
-      try {
-        return (${loopList}).map(${loopItem} => \`${children.replace(/\{(\w+)\}/g, (_, v) => {
-          return v === loopItem ? `\$\{${loopItem}\}` : `\$\{state["${v}"]\}`;
-        })}\`).join('');
-      } catch (e) {
-        return '<div style="color:red">Loop error: ' + e.message + '</div>';
-      }
-    })()}`;
+    return `\${(${loopList}).map(${loopItem} => \`${children.replace(/\{(\w+)\}/g, (_, v) => {
+      return v === loopItem ? `\${${loopItem}}` : `\${state["${v}"]}`;
+    })}\`).join('')}`;
   }
 
+  // === Built-in components ===
   switch (tagType) {
     case 'Box':
       return `<div${styleStr} class="rounded p-4 shadow-sm mb-4">${children}</div>`;
@@ -147,8 +142,6 @@ function renderNode(node: QCLNode): string {
         .map(opt => `<option value="${opt.trim()}">\${state["${props.name}"] === "${opt.trim()}" ? "✅ " : ""}${opt.trim()}</option>`)
         .join('');
       return `<select data-select="${props.name}" class="border p-2 rounded w-full">${options}</select>`;
-    case 'SlotWrapper':
-      return children;
     default:
       return `<div${styleStr}>${content}${children}</div>`;
   }
