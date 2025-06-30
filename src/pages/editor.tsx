@@ -1,12 +1,11 @@
-// src/app/editor/page.tsx or wherever your route is
 'use client';
 
 import { useState } from 'react';
-import { parseQCL } from '@/lib/qcl-parser';
 import dynamic from 'next/dynamic';
+import { parseQCL } from '@/lib/qcl-parser';
 
-const QCLPreview = dynamic(() => import('@/components/QCLPreview'), { ssr: false });
 const ThemeToggle = dynamic(() => import('@/components/ThemeToggle'), { ssr: false });
+const QCLPreview = dynamic(() => import('@/components/QCLPreview'), { ssr: false });
 
 const defaultQCL = `page title: Live Editor
 
