@@ -1,45 +1,62 @@
 export function parseQCL(source) {
-  const lines = source.split('\n').map(line => line.trim()).filter(Boolean);
+  const lines = source.split('\n').filter(line => line.trim());
+  const root = { type: 'Page', title: '', body: [] };
+  const stack = [{ indent: -1, node: root }];
 
-  const ast = { type: "Page", title: "", body: [] };
-  let currentIndent = 0;
-  let stack = [ast];
+  for (let rawLine of lines) {
+    const indent = rawLine.search(/\S/);
+    const line = rawLine.trim();
 
-  for (let line of lines) {
-    if (line.startsWith("page ")) {
+    // Handle 'page' node
+    if (line.startsWith('page ')) {
       const titleMatch = line.match(/title:\s*(.+)/);
-      if (titleMatch) ast.title = titleMatch[1].trim();
+      if (titleMatch) root.title = titleMatch[1].trim();
       continue;
     }
 
-    if (line.startsWith("state ")) {
-      const [, name, rawValue] = line.match(/^state\s+(\w+):\s+(.+)$/);
-      const value = /^\d+(\.\d+)?$/.test(rawValue.trim()) ? Number(rawValue) : rawValue.trim();
-      stack[stack.length - 1].body.push({ type: "State", name, value });
+    // Handle 'state' node
+    if (line.startsWith('state ')) {
+      const [, name, value] = line.match(/^state (\w+):\s*(.+)$/);
+      stack[stack.length - 1].node.body.push({
+        type: 'State',
+        name,
+        value: /^\d/.test(value) ? Number(value) : value
+      });
       continue;
     }
 
+    // Handle elements (box, text, button, etc.)
     const [tag, ...rest] = line.split(/\s+/);
-    const afterColon = line.split(':');
-    const lastPart = afterColon.slice(1).join(':').trim();
-
     const props = {};
-    const propStr = rest.join(' ').split(',').map(p => p.trim());
-    for (let pair of propStr) {
-      if (pair.includes(':')) {
-        const [k, v] = pair.split(':').map(s => s.trim());
-        props[k] = v;
+    let content = '';
+
+    if (rest.length && rest.join(' ').includes(':')) {
+      const [propPart, cont] = rest.join(' ').split(/:(.+)/);
+      content = cont ? cont.trim() : '';
+      const kvPairs = propPart.split(',').map(p => p.trim()).filter(Boolean);
+      for (let pair of kvPairs) {
+        const [k, v] = pair.split(':').map(p => p.trim());
+        if (k && v) props[k] = v;
       }
+    } else {
+      content = rest.join(' ').trim();
     }
 
     const node = {
       type: tag.charAt(0).toUpperCase() + tag.slice(1),
       props,
-      content: lastPart
+      content,
+      body: []
     };
 
-    stack[stack.length - 1].body.push(node);
+    // Pop stack until correct parent is found
+    while (stack.length > 1 && indent <= stack[stack.length - 1].indent) {
+      stack.pop();
+    }
+
+    stack[stack.length - 1].node.body.push(node);
+    stack.push({ indent, node });
   }
 
-  return ast;
+  return root;
 }
