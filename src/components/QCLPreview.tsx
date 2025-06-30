@@ -40,7 +40,7 @@ export default function QCLPreview({ ast }: Props) {
 
   // Render a single node
   const renderNode = (node: QCLNode, index: number): React.ReactNode => {
-    const { type, name, value, props = {}, content = '', body = [] } = node;
+    const { type, props = {}, content = '', body = [] } = node;
 
     switch (type.toLowerCase()) {
       case 'text':
