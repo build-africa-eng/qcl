@@ -12,31 +12,31 @@
   <h1>Loading QCL App...</h1>
   <div id="qcl-app"></div>
 
-<script type="module">
-  try {
-    console.log("🔍 Script running...");
+  <script type="module">
+    try {
+      console.log("🔍 Script running...");
 
-    const parserModule = await import('./qcl-parser.js');
-    const rendererModule = await import('./qcl-renderer.js');
+      const parserModule = await import('./qcl-parser.js');
+      const rendererModule = await import('./qcl-renderer.js');
 
-    const qclSource = await (await fetch('./pages/index.qcl')).text();
-    console.log("📄 QCL Source:", qclSource);
+      const qclSource = await (await fetch('./pages/index.qcl')).text();
+      console.log("📄 QCL Source:", qclSource);
 
-    const ast = parserModule.parseQCL(qclSource);
-    console.log("🌳 Parsed AST:", ast);
+      const ast = parserModule.parseQCL(qclSource);
+      console.log("🌳 Parsed AST:", ast);
 
-    const output = rendererModule.renderHTML(ast);
-    console.log("🧱 Rendered HTML:", output);
+      const output = rendererModule.renderHTML(ast);
+      console.log("🧱 Rendered HTML:", output);
 
-    const temp = document.createElement('div');
-    temp.innerHTML = output;
+      const temp = document.createElement('div');
+      temp.innerHTML = output;
 
-    const target = document.getElementById('qcl-app');
-    target.replaceWith(...temp.childNodes);
-  } catch (err) {
-    console.error("❌ QCL App Error:", err);
-    document.body.innerHTML = `<pre style="color:red;">${err.message}</pre>`;
-  }
-</script>
+      const target = document.getElementById('qcl-app');
+      target.replaceWith(...temp.childNodes);
+    } catch (err) {
+      console.error("❌ QCL App Error:", err);
+      document.body.innerHTML = `<pre style="color:red;">${err.message}</pre>`;
+    }
+  </script>
 </body>
 </html>
