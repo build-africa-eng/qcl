@@ -2,15 +2,31 @@
 <html>
 <head>
   <title>QCL Demo</title>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    button { padding: 6px 12px; margin-top: 8px; }
+  </style>
 </head>
 <body>
+  <h1>Loading QCL App...</h1>
+  <div id="qcl-app"></div>
+
   <script type="module">
     import { parseQCL } from './qcl-parser.js';
     import { renderHTML } from './qcl-renderer.js';
 
     const qclSource = await (await fetch('./pages/index.qcl')).text();
     const ast = parseQCL(qclSource);
-    document.body.innerHTML = renderHTML(ast);
+
+    const output = renderHTML(ast);
+    // Create a temporary wrapper to safely inject <script>
+    const temp = document.createElement('div');
+    temp.innerHTML = output;
+
+    // Replace content of #qcl-app without nuking <script>
+    const target = document.getElementById('qcl-app');
+    target.replaceWith(...temp.childNodes);
   </script>
 </body>
 </html>
