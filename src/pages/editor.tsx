@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { parseQCL } from '@/lib/qcl-parser';
+import ThemeToggle from '@/components/ThemeToggle';
 import QCLPreview from '@/components/QCLPreview';
 
 const defaultQCL = `page title: Live Editor
