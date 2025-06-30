@@ -74,7 +74,7 @@ function renderNode(node: QCLNode): string {
   const props = node.props || {};
   const tagType = node.type;
 
-  // Actions and styling
+  // === Handle actions and inline styles ===
   for (const [key, val] of Object.entries(props)) {
     if (key === 'bg') styles.push(`background-color:${val}`);
     if (key === 'padding') styles.push(`padding:${val}px`);
@@ -89,50 +89,47 @@ function renderNode(node: QCLNode): string {
   const styleStr = styles.length ? ` style="${styles.join(';')}"` : '';
   const attrStr = attrs.length ? ' ' + attrs.join(' ') : '';
 
+  // === Content with state injection ===
   const rawContent = (node.content || '').replace(/`/g, '\\`');
   const content = rawContent.replace(/\{(\w+)\}/g, (_, v) => `\${state["${v}"] !== undefined ? state["${v}"] : \`{${v}}\`}`);
 
+  // === Recursively render children ===
   const children = (node.body || []).map(renderNode).join('\n');
 
-  // Special case: If
+  // === Special cases ===
   if (tagType === 'If') {
     const cond = props.condition || 'false';
     return `\${${cond} ? \`${children}\` : ''}`;
   }
 
-  // Special case: For
   if (tagType === 'For') {
     const loopItem = props.item || 'item';
     const loopList = props.in || '[]';
-    return `\${(${loopList} || []).map(${loopItem} => \`${children.replace(/\{(\w+)\}/g, (_, v) => {
+    return `\${(${loopList}).map(${loopItem} => \`${children.replace(/\{(\w+)\}/g, (_, v) => {
       return v === loopItem ? `\$\{${loopItem}\}` : `\$\{state["${v}"]\}`;
     })}\`).join('')}`;
   }
 
-  // Regular components
-switch (tagType) {
-  case 'Box':
-    return `<div${styleStr} class="rounded p-4 shadow-sm mb-4">${children}</div>`;
-
-  case 'Text':
-    return `<p${styleStr} class="mb-2">${content}${children}</p>`;
-
-  case 'Button':
-    return `<button${attrStr} class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">${content}</button>`;
-
-  case 'Input':
-    return `<input data-bind="${props.name}" placeholder="${props.placeholder || ''}" class="border p-2 rounded w-full" />`;
-
-  case 'Select':
-    const options = (props.options || '')
-      .split(',')
-      .map(opt => `<option value="${opt.trim()}">\${state["${props.name}"] === "${opt.trim()}" ? "✅ " : ""}${opt.trim()}</option>`)
-      .join('');
-    return `<select data-select="${props.name}" class="border p-2 rounded w-full">${options}</select>`;
-
-  default:
-    return `<div${styleStr}>${content}${children}</div>`;
- }
+  // === Built-in tags ===
+  switch (tagType) {
+    case 'Box':
+      return `<div${styleStr} class="rounded p-4 shadow-sm mb-4">${children}</div>`;
+    case 'Text':
+      return `<p${styleStr} class="mb-2">${content}${children}</p>`;
+    case 'Button':
+      return `<button${attrStr} class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">${content}</button>`;
+    case 'Input':
+      return `<input data-bind="${props.name}" placeholder="${props.placeholder || ''}" class="border p-2 rounded w-full" />`;
+    case 'Select':
+      const options = (props.options || '')
+        .split(',')
+        .map(opt => `<option value="${opt.trim()}">\${state["${props.name}"] === "${opt.trim()}" ? "✅ " : ""}${opt.trim()}</option>`)
+        .join('');
+      return `<select data-select="${props.name}" class="border p-2 rounded w-full">${options}</select>`;
+    default:
+      // === Custom component fallback ===
+      return `<div${styleStr}>${content}${children}</div>`;
+  }
 }
 
 function escapeHTML(str: string): string {
