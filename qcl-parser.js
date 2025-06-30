@@ -4,17 +4,26 @@ export function parseQCL(source) {
   const lines = source.trim().split('\n');
   let ast = {};
   let currentIndent = 0;
-  let currentParent = null;
   let rootStack = [];
 
-  function parseProps(raw) {
-    const props = {};
-    const parts = raw.split(',');
-    for (const part of parts) {
-      const [key, value] = part.split(':').map(s => s.trim());
-      if (key && value) props[key] = value;
+  function parsePropsAndContent(rest) {
+    // Separate props from content using last colon
+    const lastColon = rest.lastIndexOf(':');
+    if (lastColon === -1) {
+      return { props: {}, content: rest.trim() };
     }
-    return props;
+
+    const propsPart = rest.slice(0, lastColon).trim();
+    const content = rest.slice(lastColon + 1).trim();
+    const props = {};
+
+    const pairs = propsPart.split(',');
+    for (let pair of pairs) {
+      const [k, v] = pair.split(':').map(s => s?.trim());
+      if (k && v) props[k] = v;
+    }
+
+    return { props, content };
   }
 
   for (let line of lines) {
@@ -22,49 +31,39 @@ export function parseQCL(source) {
     const trimmed = line.trim();
 
     if (trimmed.startsWith('page')) {
-      const [, rest] = trimmed.split('page');
-      const props = parseProps(rest);
+      const { props } = parsePropsAndContent(trimmed.slice(4));
       ast = { type: 'Page', title: props.title || '', body: [] };
-      currentParent = ast;
-      currentIndent = indent;
-      rootStack = [ast];
-    } else if (trimmed.startsWith('state')) {
-      const [, rest] = trimmed.split('state');
-      const [key, value] = rest.split(':').map(s => s.trim());
-      const stateNode = {
-        type: 'State',
-        name: key,
-        value: value,
-      };
-      currentParent.body.push(stateNode);
-    } else {
-      const [tagAndProps, ...contentParts] = trimmed.split(':');
-      const content = contentParts.join(':').trim();
-      const [tag, rawProps = ''] = tagAndProps.split(/\s(.+)/);
+      rootStack = [{ node: ast, indent }];
+      continue;
+    }
 
-      const node = {
-        type: tag.charAt(0).toUpperCase() + tag.slice(1),
-        props: parseProps(rawProps),
-        content
-      };
+    if (trimmed.startsWith('state')) {
+      const [name, value] = trimmed.slice(5).split(':').map(s => s.trim());
+      const stateNode = { type: 'State', name, value };
+      rootStack[rootStack.length - 1].node.body.push(stateNode);
+      continue;
+    }
 
-      // Determine where to place the node based on indent level
-      if (indent > currentIndent) {
-        const last = rootStack[rootStack.length - 1];
-        if (!last.body) last.body = [];
-        last.body.push(node);
-        rootStack.push(node);
-        currentIndent = indent;
-      } else {
-        // Pop until we're back at the right level
-        while (indent < currentIndent && rootStack.length > 1) {
-          rootStack.pop();
-          currentIndent -= 2;
-        }
-        const parent = rootStack[rootStack.length - 1];
-        if (!parent.body) parent.body = [];
-        parent.body.push(node);
-      }
+    const [tag, rest] = trimmed.split(/\s(.+)/);
+    const type = tag.charAt(0).toUpperCase() + tag.slice(1);
+    const { props, content } = parsePropsAndContent(rest || '');
+
+    const node = { type, props, content };
+    if (type === 'Box' || type === 'List') node.body = [];
+
+    // Determine nesting by indentation
+    while (rootStack.length && indent <= rootStack[rootStack.length - 1].indent) {
+      rootStack.pop();
+    }
+
+    const parent = rootStack[rootStack.length - 1];
+    if (parent) {
+      if (!parent.node.body) parent.node.body = [];
+      parent.node.body.push(node);
+    }
+
+    if (node.body) {
+      rootStack.push({ node, indent });
     }
   }
 
