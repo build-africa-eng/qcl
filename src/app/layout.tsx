@@ -1,4 +1,3 @@
-// src/app/layout.tsx
 import './globals.css';
 
 export const metadata = {
@@ -8,8 +7,8 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="bg-gray-50 text-gray-900 p-6">
+    <html lang="en" className="dark">
+      <body className="min-h-screen bg-white text-black dark:bg-gray-900 dark:text-white transition-colors duration-300">
         {children}
       </body>
     </html>
