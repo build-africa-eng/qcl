@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",                       // Modern JS target
+    "lib": ["DOM", "DOM.Iterable", "ES2020"], // Include DOM and modern JS features
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",            // Required for Next.js App Router
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "preserve",                        // Let Next.js handle JSX/TSX
+    "incremental": true,
+
+    // ✅ Path Aliases
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+
+    // ✅ Type Checking
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": false
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
+}
