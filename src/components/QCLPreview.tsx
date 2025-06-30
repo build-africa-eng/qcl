@@ -103,6 +103,20 @@ export default function QCLPreview({ ast }: Props) {
           </div>
         );
 
+        case 'if': {
+  const condition = props.condition ?? '';
+  let shouldRender = false;
+
+  try {
+    // Safe evaluation context
+    shouldRender = new Function('state', `return ${condition}`)(state);
+  } catch (err) {
+    console.error('If condition error:', err);
+  }
+
+  return shouldRender ? <React.Fragment key={index}>{body.map(renderNode)}</React.Fragment> : null;
+}
+
       default:
         return null;
     }
