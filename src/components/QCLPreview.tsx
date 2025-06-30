@@ -22,6 +22,10 @@ export default function QCLPreview({ ast }: { ast: QCLNode }) {
     }
   };
 
+  const handleStateChange = (key: string, value: string | number) => {
+    setState(prev => ({ ...prev, [key]: value }));
+  };
+
   const renderNode = (node: QCLNode): React.ReactNode => {
     if (!node) return null;
 
@@ -35,10 +39,7 @@ export default function QCLPreview({ ast }: { ast: QCLNode }) {
         return (
           <div
             className="rounded p-4 shadow-sm mb-4"
-            style={{
-              backgroundColor: props.bg,
-              padding: props.padding ? `${props.padding}px` : undefined,
-            }}
+            style={{ backgroundColor: props.bg, padding: props.padding ? `${props.padding}px` : undefined }}
           >
             {children}
           </div>
@@ -46,13 +47,7 @@ export default function QCLPreview({ ast }: { ast: QCLNode }) {
 
       case 'Text':
         return (
-          <p
-            className="mb-2"
-            style={{
-              fontSize: props.size ? `${props.size}px` : undefined,
-              fontWeight: props.weight,
-            }}
-          >
+          <p className="mb-2" style={{ fontSize: props.size ? `${props.size}px` : undefined, fontWeight: props.weight }}>
             {dynamicText}
             {children}
           </p>
@@ -68,19 +63,46 @@ export default function QCLPreview({ ast }: { ast: QCLNode }) {
           </button>
         );
 
+      case 'Input':
+        return (
+          <input
+            className="border px-2 py-1 rounded"
+            type={props.type || 'text'}
+            value={state[props.name] ?? ''}
+            placeholder={props.placeholder}
+            onChange={(e) => handleStateChange(props.name, e.target.value)}
+          />
+        );
+
+      case 'Select':
+        const options = (props.options || '').split(',').map(s => s.trim());
+        return (
+          <select
+            className="border px-2 py-1 rounded"
+            value={state[props.name] ?? ''}
+            onChange={(e) => handleStateChange(props.name, e.target.value)}
+          >
+            {options.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        );
+
       default:
         return <div>{dynamicText}{children}</div>;
     }
   };
 
   return (
-    <div className="qcl-preview space-y-4">
-      {ast.title && (
-        <h1 className="text-2xl font-bold text-gray-800">{ast.title}</h1>
-      )}
+    <div className="space-y-4">
+      {ast.title && <h1 className="text-2xl font-bold text-gray-800">{ast.title}</h1>}
       {ast.body?.filter(n => n.type !== 'State').map((node, index) => (
         <React.Fragment key={index}>{renderNode(node)}</React.Fragment>
       ))}
+      <details className="mt-4 border-t pt-2 text-sm text-gray-600">
+        <summary className="cursor-pointer">🔍 State Inspector</summary>
+        <pre className="bg-gray-100 rounded p-2 mt-2 text-xs overflow-auto">{JSON.stringify(state, null, 2)}</pre>
+      </details>
     </div>
   );
 }
