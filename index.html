@@ -1,14 +1,20 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>QCL App</title>
-    <meta name="description" content="Quad Core Language - Unified Components Language (QCL)">
-    <link rel="icon" href="./favicon.ico" type="image/x-icon" />
+    <meta name="description" content="Quick Components Language (QCL) — Unified Components Language built for the web." />
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="/src/index.css" />
   </head>
-  <body class="bg-gray-50 text-gray-900 p-6">
-   <div id="qcl-container">Loading QCL...</div>
-    <script type="module" src="./src/main.js"></script>
+  <body class="h-full bg-gray-50 text-gray-900 p-6">
+    <!-- Container for rendering parsed QCL -->
+    <div id="qcl-container" class="max-w-3xl mx-auto">
+      Loading QCL...
+    </div>
+
+    <!-- Main logic (includes parser/renderer/load) -->
+    <script type="module" src="/src/main.js"></script>
   </body>
 </html>
