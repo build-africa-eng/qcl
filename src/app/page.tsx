@@ -1,29 +1,25 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 import { parseQCL } from '@/lib/qcl-parser';
 import { renderHTML } from '@/lib/qcl-renderer';
 
-export default function HomePage() {
-  const [output, setOutput] = useState('<p>Loading QCL...</p>');
+export default function Home() {
+  const [html, setHtml] = useState('<div>Loading QCL...</div>');
 
   useEffect(() => {
-    async function loadQCL() {
-      try {
-        const res = await fetch('/pages/index.qcl');
-        const source = await res.text();
+    fetch('/pages/index.qcl')
+      .then((res) => res.text())
+      .then((source) => {
         const ast = parseQCL(source);
-        const html = renderHTML(ast);
-        setOutput(html);
-      } catch (err: any) {
-        setOutput(`<pre class="text-red-600">QCL Error:\n${err.message}</pre>`);
+        const rendered = renderHTML(ast);
+        setHtml(rendered);
+      })
+      .catch((err) => {
         console.error('❌ QCL Error:', err);
-      }
-    }
-    loadQCL();
+        setHtml(`<pre style="color:red;">QCL Error: ${err.message}</pre>`);
+      });
   }, []);
 
-  return (
-    <main className="max-w-2xl mx-auto">
-      <div dangerouslySetInnerHTML={{ __html: output }} />
-    </main>
-  );
+  return <div id="qcl-container" dangerouslySetInnerHTML={{ __html: html }} />;
 }
