@@ -91,15 +91,16 @@ export function parseQCL(source: string): QCLNode {
       continue;
     }
 
-    // === End component def ===
-    if (currentComponent && indent <= stack[stack.length - 1].indent) {
-      components[currentComponent.name] = {
-        args: currentComponent.args,
-        body: JSON.parse(JSON.stringify(currentComponent.body)), // deep copy
-      };
-      currentComponent = null;
-      continue;
-    }
+// === End component def ===
+if (currentComponent && indent <= stack[stack.length - 1].indent) {
+  const { name, args, body } = currentComponent;
+  components[name] = {
+    args,
+    body: JSON.parse(JSON.stringify(body)), // deep copy
+  };
+  currentComponent = null;
+  continue;
+}
 
     // === Handle regular tag or component usage ===
     const [tag] = line.split(/\s+/);
