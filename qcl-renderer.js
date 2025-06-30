@@ -4,7 +4,7 @@ export function renderHTML(ast) {
   const state = {};
   const html = [];
 
-  // Inline styles helper
+  // Inline styles from props
   function styleFromProps(props) {
     const css = [];
     if (props.bg) css.push(`background:${props.bg}`);
@@ -21,47 +21,48 @@ export function renderHTML(ast) {
         return '';
 
       case 'Text':
-        return `<p style="${styleFromProps(node.props)}">${bindText(node.content)}</p>`;
+        return `<p style="${styleFromProps(node.props)}">${bind(node.content)}</p>`;
 
       case 'Box':
-        const children = (node.body || []).map(renderNode).join('\n');
-        return `<div style="${styleFromProps(node.props)}">${children}</div>`;
+        const boxChildren = (node.body || []).map(renderNode).join('\n');
+        return `<div style="${styleFromProps(node.props)}">${boxChildren}</div>`;
 
       case 'Button':
-        const action = node.props.action || '';
-        return `<button onclick="run('${action}')" style="${styleFromProps(node.props)}">${bindText(node.content)}</button>`;
+        return `<button onclick="run('${node.props.action}')" style="${styleFromProps(node.props)}">${bind(node.content)}</button>`;
 
       default:
         return '';
     }
   }
 
-  function bindText(text) {
+  function bind(text) {
     return text.replace(/{(\w+)}/g, (_, key) => `\${state["${key}"]}`);
   }
 
-  const rendered = ast.body.map(renderNode).join('\n');
+  const renderedHTML = ast.body.map(renderNode).join('\n');
 
-  // Final HTML + JS
   return `
 <h1>${ast.title}</h1>
 <div id="qcl-app"></div>
 
 <script type="module">
   let state = ${JSON.stringify(state, null, 2)};
+
   function run(code) {
     try {
       eval(code);
       render();
-    } catch (e) {
-      console.error('Action failed:', e);
+    } catch (err) {
+      console.error('Action failed:', err);
     }
   }
+
   function render() {
-    const html = \`${rendered}\`;
+    const html = \`${renderedHTML}\`;
     document.getElementById('qcl-app').innerHTML = html;
   }
+
   render();
 </script>
-`;
+  `;
 }
