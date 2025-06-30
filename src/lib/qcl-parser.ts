@@ -124,13 +124,15 @@ if (currentComponent && indent <= stack[stack.length - 1].indent) {
       body: [],
     };
 
-    // === If it's a known component, expand ===
-    if (components[tag]) {
-      const def = components[tag];
-      const clone = JSON.parse(JSON.stringify(def.body));
-      const injected = injectProps(clone, props);
-      node.body = injected;
-    }
+  // === If it's a known component, expand ===
+if (components[tag]) {
+  const def = components[tag];
+  const clone = JSON.parse(JSON.stringify(def.body));
+
+  // ⬇️ Inject props + slot content
+  const injected = injectProps(clone, props, node.body);
+  node.body = injected;
+}
 
     while (stack.length && indent <= stack[stack.length - 1].indent) {
       stack.pop();
@@ -146,8 +148,16 @@ if (currentComponent && indent <= stack[stack.length - 1].indent) {
 }
 
 // Replace {name} with props["name"] inside component body
-function injectProps(body: QCLNode[], props: Record<string, string>): QCLNode[] {
+function injectProps(body: QCLNode[], props: Record<string, string>, slotContent: QCLNode[] = []): QCLNode[] {
   const traverse = (node: QCLNode): QCLNode => {
+    if (node.type === 'Slot') {
+      // Replace slot node with the actual content
+      return {
+        type: 'SlotWrapper',
+        body: slotContent.map(traverse), // recursively traverse children
+      };
+    }
+
     const newNode: QCLNode = {
       ...node,
       content: node.content?.replace(/\{(\w+)\}/g, (_, key) => `{${props[key] || key}}`),
@@ -161,3 +171,4 @@ function injectProps(body: QCLNode[], props: Record<string, string>): QCLNode[] 
 
   return body.map(traverse);
 }
+
