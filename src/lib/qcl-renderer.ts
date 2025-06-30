@@ -120,6 +120,8 @@ function renderNode(node: QCLNode): string {
       return `<button${attrStr} class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">${content}</button>`;
     case 'Input':
       return `<input data-bind="${props.name}" placeholder="${props.placeholder || ''}" class="border p-2 rounded w-full" />`;
+      case 'SlotWrapper':
+  return children; // children already injected by parser
     case 'Select':
       const options = (props.options || '')
         .split(',')
