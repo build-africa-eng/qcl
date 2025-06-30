@@ -12,6 +12,7 @@
     "noEmit": true,
     "jsx": "preserve",                        // Let Next.js handle JSX/TSX
     "incremental": true,
+    "typeRoots": ["./src/types", "./node_modules/@types"],
 
     // ✅ Path Aliases
     "baseUrl": ".",
