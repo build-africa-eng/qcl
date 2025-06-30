@@ -2,5 +2,5 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  base: '/qcl/', // Set this to your GitHub Pages repo name
+  base: './', 
 })
