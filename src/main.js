@@ -1,5 +1,6 @@
 import { parseQCL } from '../qcl-parser.js';
 import { renderHTML } from '../qcl-renderer.js';
+import './index.css';
 
 fetch('/pages/index.qcl')
   .then(res => res.text())
