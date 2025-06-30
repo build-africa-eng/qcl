@@ -41,30 +41,34 @@ export function renderHTML(ast) {
 }
 
 function renderNode(node) {
-  const styles = [];
+  const classes = [];
   const attrs = [];
 
   for (const [key, val] of Object.entries(node.props || {})) {
-    if (key === 'bg') styles.push(`background:${val}`);
-    if (key === 'padding') styles.push(`padding:${val}px`);
-    if (key === 'size') styles.push(`font-size:${val}px`);
-    if (key === 'weight') styles.push(`font-weight:${val}`);
-    if (key === 'action') attrs.push(`onclick="run('${val}')"`);
+    if (key === 'bg') classes.push(`bg-[${val}]`);
+    if (key === 'padding') classes.push(`p-[${val}px]`);
+    if (key === 'size') classes.push(`text-[${val}px]`);
+    if (key === 'weight') classes.push(val === 'bold' ? 'font-bold' : `font-[${val}]`);
+    if (key === 'action') attrs.push(`onclick="window.run('${val.replace(/'/g, "\\'")}')"`);
   }
 
-  const styleStr = styles.length ? ` style="${styles.join(';')}"` : '';
+  const classStr = classes.length ? ` class="${classes.join(' ')}"` : '';
   const attrStr = attrs.length ? ' ' + attrs.join(' ') : '';
 
   const content = (node.content || '')
-    .replace(/\{(\w+)\}/g, (_, v) => `\${state["${v}"]}`);
+    .replace(/\{(\w+)\}/g, (_, v) => `\${state["${v}"] !== undefined ? state["${v}"] : \`{${v}}\`}`);
 
-  const children = (node.body || [])
-    .map(renderNode)
-    .join('\n');
+  const children = (node.body || []).map(renderNode).join('\n');
 
-  if (node.type === 'Box') return `<div${styleStr}>${children}</div>`;
-  if (node.type === 'Text') return `<p${styleStr}>${content}${children}</p>`;
-  if (node.type === 'Button') return `<button${attrStr}${styleStr}>${content}</button>`;
-
-  return `<div${styleStr}>${content}${children}</div>`;
+  switch (node.type) {
+    case 'Box':
+      return `<div${classStr}>${children}</div>`;
+    case 'Text':
+      return `<p${classStr}>${content}${children}</p>`;
+    case 'Button':
+      return `<button${classStr}${attrStr}>${content}</button>`;
+    default:
+      return `<div${classStr}>${content}${children}</div>`;
+  }
 }
+
