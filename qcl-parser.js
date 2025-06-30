@@ -28,6 +28,15 @@ export function parseQCL(source) {
       currentParent = ast;
       currentIndent = indent;
       rootStack = [ast];
+    } else if (trimmed.startsWith('state')) {
+      const [, rest] = trimmed.split('state');
+      const [key, value] = rest.split(':').map(s => s.trim());
+      const stateNode = {
+        type: 'State',
+        name: key,
+        value: value,
+      };
+      currentParent.body.push(stateNode);
     } else {
       const [tagAndProps, ...contentParts] = trimmed.split(':');
       const content = contentParts.join(':').trim();
