@@ -2,46 +2,263 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="QCL: A new markup language unifying structure, style, interactivity, and data.">
   <title>QCL App</title>
   <style>
+    /* Basic styling for the application */
     body {
-      font-family: system-ui, sans-serif;
-      padding: 1rem;
-      background: #f4f4f4;
-      color: #222;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+      padding: 1.5rem;
+      background-color: #f7f9fc;
+      color: #333;
+      line-height: 1.6;
+    }
+    #qcl-container h1 {
+        font-size: 2rem;
+        color: #2c3e50;
+        border-bottom: 2px solid #e0e0e0;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
     }
     button {
-      padding: 8px 14px;
+      padding: 10px 18px;
       font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background-color: #3498db;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+      font-weight: 500;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    button:active {
+        transform: scale(0.98);
+    }
+    pre {
+      background-color: #ffebee;
+      color: #c62828;
+      padding: 1rem;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
     }
   </style>
 </head>
 <body>
-  <div id="qcl-app">Loading QCL App...</div>
+
+  <!-- This is the main container where the QCL app will be rendered. -->
+  <div id="qcl-container">Loading QCL App...</div>
 
   <script type="module">
-    // Delay rendering to allow initial paint
-    setTimeout(async () => {
-      try {
-        const parser = await import('./qcl-parser.js');
-        const renderer = await import('./qcl-renderer.js');
+    // --- QCL Source Code ---
+    // The content of your 'index.qcl' file is stored here as a string.
+    const qclSource = `
+page title: QCL Demo
+  state count: 0
+  box bg: #eaf4ff, padding: 20
+    text size: 18, weight: bold: Count: {count}
+    button action: count++: Increment
+`;
 
-        const source = await (await fetch('./pages/index.qcl')).text();
-        const ast = parser.parseQCL(source);
-        const html = renderer.renderHTML(ast);
+    // --- 1. QCL PARSER ---
+    // This is the logic from your 'qcl-parser.js' file.
+    // It parses the QCL source code into an Abstract Syntax Tree (AST).
+    function parseQCL(source) {
+      const lines = source.split('\n').filter(line => line.trim() !== '');
 
-        const temp = document.createElement('div');
-        temp.innerHTML = html;
+      const root = { type: "Page", title: "", body: [] };
+      // The stack tracks indentation levels to build the nested structure.
+      const stack = [{ indent: -1, node: root }];
 
-        const target = document.getElementById('qcl-app');
-        target.replaceWith(...temp.childNodes);
-      } catch (err) {
-        console.error("❌ QCL App Error:", err);
-        document.body.innerHTML = `<pre style="color:red;">${err.message}</pre>`;
+      for (let rawLine of lines) {
+        const indent = rawLine.search(/\S/);
+        const line = rawLine.trim();
+        
+        // Ignore empty lines that might result from filtering
+        if (indent === -1) continue;
+
+        if (line.startsWith('page ')) {
+          const titleMatch = line.match(/title:\s*(.+)/);
+          if (titleMatch) root.title = titleMatch[1].trim();
+          continue;
+        }
+
+        if (line.startsWith('state ')) {
+          const match = line.match(/^state (\w+):\s*(.+)$/);
+          if (match) {
+              const [, name, value] = match;
+              stack[stack.length - 1].node.body.push({
+                type: "State",
+                name,
+                value: /^\d+(\.\d+)?$/.test(value) ? Number(value) : value.replace(/^"(.*)"$/, '$1')
+              });
+          }
+          continue;
+        }
+
+        const [tag] = line.split(/\s+/);
+        const props = {};
+        let content = '';
+
+        if (line.includes(':')) {
+          const [propPart, cont] = line.split(/:(.+)/);
+          content = cont ? cont.trim() : '';
+
+          const kvPairs = propPart
+            .replace(tag, '')
+            .split(',')
+            .map(p => p.trim())
+            .filter(Boolean);
+
+          for (let pair of kvPairs) {
+            const [k, v] = pair.split(':').map(p => p.trim());
+            if (k && v) props[k] = v;
+          }
+        }
+
+        const node = {
+          type: tag.charAt(0).toUpperCase() + tag.slice(1),
+          props,
+          content,
+          body: []
+        };
+        
+        // Determine the parent node based on indentation.
+        while (stack.length && indent <= stack[stack.length - 1].indent) {
+          stack.pop();
+        }
+
+        stack[stack.length - 1].node.body.push(node);
+        stack.push({ indent, node });
       }
-    }, 50);
+
+      return root;
+    }
+
+    // --- 2. QCL RENDERER ---
+    // This is the logic from your 'qcl-renderer.js' file.
+    // It takes the AST and generates the final HTML and interactive JavaScript.
+    function renderHTML(ast) {
+      // Extracts state variables from the AST to initialize the 'state' object.
+      const stateVars = ast.body
+        .filter(n => n.type === "State")
+        .map(n => `"${n.name}": ${JSON.stringify(n.value)}`)
+        .join(",\n");
+
+      // Renders the UI components from the AST.
+      const htmlContent = ast.body
+        .filter(n => n.type !== "State")
+        .map(renderNode)
+        .join('\\n'); // Use escaped newline for template literal
+
+      // Returns the final HTML structure, including the client-side script for reactivity.
+      return `
+        <h1>${ast.title}</h1>
+        <div id="qcl-app"></div>
+
+        <script>
+          // This script runs on the client side to manage state and re-rendering.
+          (() => {
+            let state = {
+              ${stateVars}
+            };
+
+            // This function is called by interactive elements (e.g., buttons).
+            function run(code) {
+              try {
+                // 'with' is used for a simple way to access state variables directly.
+                // Note: 'with' is generally discouraged, but is effective for this DSL.
+                with (state) {
+                  eval(code);
+                }
+                render(); // Re-render the UI after state changes.
+              } catch (err) {
+                console.error('Action failed:', err);
+                // A non-blocking way to show errors
+                const errorDiv = document.createElement('div');
+                errorDiv.textContent = 'Action failed: ' + err.message;
+                errorDiv.style.color = 'red';
+                document.getElementById('qcl-app').appendChild(errorDiv);
+              }
+            }
+            window.run = run; // Make run function globally accessible
+
+            // This function re-renders the component's inner HTML.
+            function render() {
+              const html = \`${htmlContent}\`;
+              document.getElementById("qcl-app").innerHTML = html;
+            }
+
+            render(); // Initial render.
+          })();
+        <\/script>
+      `;
+    }
+    
+    // Helper function to render a single AST node to an HTML string.
+    function renderNode(node) {
+      const styles = [];
+      const attrs = [];
+
+      for (const [key, val] of Object.entries(node.props || {})) {
+        if (key === 'bg') styles.push(`background-color:${val}`);
+        if (key === 'padding') styles.push(`padding:${val}px`);
+        if (key === 'size') styles.push(`font-size:${val}px`);
+        if (key === 'weight') styles.push(`font-weight:${val}`);
+        // The action becomes an onclick handler that calls the global 'run' function.
+        if (key === 'action') attrs.push(`onclick="window.run('${val.replace(/'/g, "\\'")}')"`);
+      }
+
+      const styleStr = styles.length ? ` style="${styles.join(';')}"` : '';
+      const attrStr = attrs.length ? ' ' + attrs.join(' ') : '';
+      
+      // Replaces {variable} placeholders with JavaScript template literal syntax.
+      const content = (node.content || '')
+        .replace(/\\{/g, '&#123;') // Escape literal '{'
+        .replace(/\\}/g, '&#125;') // Escape literal '}'
+        .replace(/\{(\w+)\}/g, (_, v) => `\${state["${v}"] !== undefined ? state["${v}"] : \`{${v}}\`}`);
+
+      // Recursively renders child nodes.
+      const children = (node.body || [])
+        .map(renderNode)
+        .join('\\n');
+
+      switch (node.type) {
+        case 'Box':
+            return `<div${styleStr}>${children}</div>`;
+        case 'Text':
+            // Added margin-bottom for better spacing between text and other elements
+            return `<p${styleStr} style="${styles.join(';')}; margin-bottom: 1rem;">${content}${children}</p>`;
+        case 'Button':
+            return `<button${attrStr}${styleStr}>${content}</button>`;
+        default:
+            return `<div${styleStr}>${content}${children}</div>`;
+      }
+    }
+
+
+    // --- 3. EXECUTION ---
+    // This is the main logic from your 'index.html'.
+    // It orchestrates the parsing and rendering process.
+    try {
+      // 1. Parse the QCL source into an AST.
+      const ast = parseQCL(qclSource);
+      
+      // 2. Render the AST into the final HTML string.
+      const finalHtml = renderHTML(ast);
+
+      // 3. Inject the result into the page.
+      document.getElementById('qcl-container').innerHTML = finalHtml;
+
+    } catch (err) {
+      console.error("❌ QCL App Error:", err);
+      document.getElementById('qcl-container').innerHTML = `<pre>QCL Error:\n${err.message}\n\n${err.stack}</pre>`;
+    }
   </script>
+
 </body>
 </html>
