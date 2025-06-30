@@ -12,7 +12,7 @@ export type QCLNode = {
 export function parseQCL(source: string): QCLNode {
   const lines = source.split('\n').filter(line => line.trim() !== '');
 
-  const root: QCLNode = { type: "Page", title: "", body: [] };
+  const root: QCLNode = { type: 'Page', title: '', body: [] };
   const stack: { indent: number; node: QCLNode }[] = [{ indent: -1, node: root }];
 
   for (let rawLine of lines) {
@@ -20,12 +20,14 @@ export function parseQCL(source: string): QCLNode {
     const line = rawLine.trim();
     if (indent === -1) continue;
 
+    // Page title
     if (line.startsWith('page ')) {
       const titleMatch = line.match(/title:\s*(.+)/);
       if (titleMatch) root.title = titleMatch[1].trim();
       continue;
     }
 
+    // State
     if (line.startsWith('state ')) {
       const match = line.match(/^state (\w+):\s*(.+)$/);
       if (match) {
@@ -33,14 +35,59 @@ export function parseQCL(source: string): QCLNode {
         const current = stack[stack.length - 1].node;
         if (!current.body) current.body = [];
         current.body.push({
-          type: "State",
+          type: 'State',
           name,
-          value: /^\d+(\.\d+)?$/.test(value) ? Number(value) : value.replace(/^"(.*)"$/, '$1')
+          value: /^\d+(\.\d+)?$/.test(value) ? Number(value) : value.replace(/^"(.*)"$/, '$1'),
         });
       }
       continue;
     }
 
+    // If
+    if (line.startsWith('If:')) {
+      const condition = line.slice(3).trim();
+      const node: QCLNode = {
+        type: 'If',
+        props: { condition },
+        body: [],
+      };
+
+      while (stack.length && indent <= stack[stack.length - 1].indent) {
+        stack.pop();
+      }
+
+      const parent = stack[stack.length - 1].node;
+      if (!parent.body) parent.body = [];
+      parent.body.push(node);
+      stack.push({ indent, node });
+      continue;
+    }
+
+    // For
+    if (line.startsWith('For:')) {
+      const loopExpr = line.slice(4).trim(); // e.g. item in items
+      const match = loopExpr.match(/^(\w+)\s+in\s+(.+)$/);
+      if (match) {
+        const [, item, list] = match;
+        const node: QCLNode = {
+          type: 'For',
+          props: { item, in: list },
+          body: [],
+        };
+
+        while (stack.length && indent <= stack[stack.length - 1].indent) {
+          stack.pop();
+        }
+
+        const parent = stack[stack.length - 1].node;
+        if (!parent.body) parent.body = [];
+        parent.body.push(node);
+        stack.push({ indent, node });
+      }
+      continue;
+    }
+
+    // Generic components
     const [tag] = line.split(/\s+/);
     const props: Record<string, string> = {};
     let content = '';
@@ -59,7 +106,7 @@ export function parseQCL(source: string): QCLNode {
       type: tag.charAt(0).toUpperCase() + tag.slice(1),
       props,
       content,
-      body: []
+      body: [],
     };
 
     while (stack.length && indent <= stack[stack.length - 1].indent) {
@@ -71,18 +118,7 @@ export function parseQCL(source: string): QCLNode {
     parent.body.push(node);
     stack.push({ indent, node });
   }
-  
-  // Simplified case in the parser
-if (line.startsWith('If:')) {
-  const condition = line.slice(3).trim();
-  current = {
-    type: 'If',
-    props: { condition },
-    body: [],
-  };
-  addToParent(current);
-  stack.push(current);
-}
 
   return root;
 }
+
