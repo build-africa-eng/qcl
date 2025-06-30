@@ -1,108 +1,96 @@
-import React, { useState } from 'react';
-import type { QCLNode } from '@/lib/qcl-parser';
+'use client';
 
-type QCLState = Record<string, string | number>;
+import React from 'react';
+import { QCLNode } from '@/lib/qcl-parser';
 
-export default function QCLPreview({ ast }: { ast: QCLNode }) {
-  const initialState = Object.fromEntries(
-    (ast.body || [])
-      .filter(n => n.type === 'State' && typeof n.name === 'string')
-      .map(n => [n.name as string, n.value ?? ''])
-  );
+type Props = {
+  ast: QCLNode;
+};
 
-  const [state, setState] = useState<QCLState>(initialState);
+export default function QCLPreview({ ast }: Props) {
+  const renderNode = (node: QCLNode, index: number) => {
+    const { type, name, value, props = {}, content = '', body = [] } = node;
 
-  const run = (code: string) => {
-    try {
-      const scopedEval = new Function('state', 'setState', `with(state) { ${code} }`);
-      scopedEval({ ...state }, (newState: QCLState) => setState(prev => ({ ...prev, ...newState })));
-    } catch (e) {
-      console.error('Action failed:', e);
-      alert('Action failed: ' + (e as Error).message);
-    }
-  };
-
-  const handleStateChange = (key: string, value: string | number) => {
-    setState(prev => ({ ...prev, [key]: value }));
-  };
-
-  const renderNode = (node: QCLNode): React.ReactNode => {
-    if (!node) return null;
-
-    const props = node.props || {};
-    const children = (node.body || []).map((child, i) => <React.Fragment key={i}>{renderNode(child)}</React.Fragment>);
-
-    const dynamicText = (node.content || '').replace(/\{(\w+)\}/g, (_, v) => `${state[v] ?? `{${v}}`}`);
-
-    switch (node.type) {
-      case 'Box':
+    switch (type.toLowerCase()) {
+      case 'text':
         return (
-          <div
-            className="rounded p-4 shadow-sm mb-4"
-            style={{ backgroundColor: props.bg, padding: props.padding ? `${props.padding}px` : undefined }}
-          >
-            {children}
-          </div>
-        );
-
-      case 'Text':
-        return (
-          <p className="mb-2" style={{ fontSize: props.size ? `${props.size}px` : undefined, fontWeight: props.weight }}>
-            {dynamicText}
-            {children}
+          <p key={index} className="mb-2 text-gray-800 dark:text-gray-200 text-base">
+            {interpolate(content, ast)}
           </p>
         );
 
-      case 'Button':
+      case 'input':
+        return (
+          <div key={index} className="mb-4">
+            <input
+              name={props.name}
+              placeholder={props.placeholder || ''}
+              className="border px-2 py-1 rounded w-full"
+              disabled
+            />
+          </div>
+        );
+
+      case 'select':
+        return (
+          <div key={index} className="mb-4">
+            <select name={props.name} className="border px-2 py-1 rounded w-full" disabled>
+              {(props.options?.split(',') || []).map((opt, i) => (
+                <option key={i} value={opt.trim()}>
+                  {opt.trim()}
+                </option>
+              ))}
+            </select>
+          </div>
+        );
+
+      case 'button':
         return (
           <button
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            onClick={() => props.action && run(props.action)}
+            key={index}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+            disabled
           >
-            {dynamicText}
+            {interpolate(content, ast)}
           </button>
         );
 
-      case 'Input':
+      case 'box':
         return (
-          <input
-            className="border px-2 py-1 rounded"
-            type={props.type || 'text'}
-            value={state[props.name] ?? ''}
-            placeholder={props.placeholder}
-            onChange={(e) => handleStateChange(props.name, e.target.value)}
-          />
+          <div
+            key={index}
+            className="p-4 rounded shadow mb-4"
+            style={{ backgroundColor: props.bg || '#fff' }}
+          >
+            {body.map(renderNode)}
+          </div>
         );
 
-      case 'Select':
-        const options = (props.options || '').split(',').map(s => s.trim());
-        return (
-          <select
-            className="border px-2 py-1 rounded"
-            value={state[props.name] ?? ''}
-            onChange={(e) => handleStateChange(props.name, e.target.value)}
-          >
-            {options.map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
-        );
+      case 'state':
+        // states are handled globally; no UI rendered directly
+        return null;
 
       default:
-        return <div>{dynamicText}{children}</div>;
+        return null;
     }
   };
 
   return (
-    <div className="space-y-4">
-      {ast.title && <h1 className="text-2xl font-bold text-gray-800">{ast.title}</h1>}
-      {ast.body?.filter(n => n.type !== 'State').map((node, index) => (
-        <React.Fragment key={index}>{renderNode(node)}</React.Fragment>
-      ))}
-      <details className="mt-4 border-t pt-2 text-sm text-gray-600">
-        <summary className="cursor-pointer">🔍 State Inspector</summary>
-        <pre className="bg-gray-100 rounded p-2 mt-2 text-xs overflow-auto">{JSON.stringify(state, null, 2)}</pre>
-      </details>
+    <div>
+      {ast?.body?.map((node, index) => renderNode(node, index))}
     </div>
   );
+}
+
+// Very basic template variable replacement: replaces {name} with value from state
+function interpolate(template: string, ast: QCLNode): string {
+  const stateMap: Record<string, string | number> = {};
+
+  for (const node of ast.body || []) {
+    if (node.type.toLowerCase() === 'state' && node.name) {
+      stateMap[node.name] = node.value ?? '';
+    }
+  }
+
+  return template.replace(/\{(\w+)\}/g, (_, key) => String(stateMap[key] ?? `{${key}}`));
 }
