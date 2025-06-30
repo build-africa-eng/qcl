@@ -71,6 +71,18 @@ export function parseQCL(source: string): QCLNode {
     parent.body.push(node);
     stack.push({ indent, node });
   }
+  
+  // Simplified case in the parser
+if (line.startsWith('If:')) {
+  const condition = line.slice(3).trim();
+  current = {
+    type: 'If',
+    props: { condition },
+    body: [],
+  };
+  addToParent(current);
+  stack.push(current);
+}
 
   return root;
 }
