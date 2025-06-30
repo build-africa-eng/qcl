@@ -15,35 +15,55 @@ export function renderHTML(ast: QCLNode): string {
     <h1 class="text-2xl font-bold mb-6">${escapeHTML(ast.title || '')}</h1>
     <div id="qcl-app"></div>
     <script type="module">
-      (() => {
-        let state = {
-          ${stateVars}
-        };
+      const state = {
+        ${stateVars}
+      };
 
-        function run(code) {
-          try {
-            with (state) {
-              eval(code);
-            }
-            render();
-          } catch (err) {
-            console.error('Action failed:', err);
-            const errorDiv = document.createElement('div');
-            errorDiv.textContent = 'Action failed: ' + err.message;
-            errorDiv.style.color = 'red';
-            document.getElementById('qcl-app').appendChild(errorDiv);
+      function render() {
+        const html = \`${htmlContent}\`;
+        document.getElementById("qcl-app").innerHTML = html;
+        bindInputs();
+      }
+
+      function run(code) {
+        try {
+          with (state) {
+            eval(code);
           }
+          render();
+        } catch (err) {
+          console.error('Action failed:', err);
+          const errorDiv = document.createElement('div');
+          errorDiv.textContent = 'Action failed: ' + err.message;
+          errorDiv.style.color = 'red';
+          document.getElementById('qcl-app').appendChild(errorDiv);
         }
+      }
 
-        window.run = run;
+      function bindInputs() {
+        document.querySelectorAll('[data-bind]').forEach(el => {
+          const name = el.getAttribute('data-bind');
+          if (!name) return;
 
-        function render() {
-          const html = \`${htmlContent}\`;
-          document.getElementById("qcl-app").innerHTML = html;
-        }
+          el.value = state[name] || '';
+          el.oninput = e => {
+            state[name] = e.target.value;
+            render();
+          };
+        });
 
-        render();
-      })();
+        document.querySelectorAll('[data-select]').forEach(el => {
+          const name = el.getAttribute('data-select');
+          el.value = state[name] || '';
+          el.onchange = e => {
+            state[name] = e.target.value;
+            render();
+          };
+        });
+      }
+
+      window.run = run;
+      render();
     <\/script>
   `;
 }
@@ -99,6 +119,17 @@ function renderNode(node: QCLNode): string {
       return `<button${attrStr} class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">${content}</button>`;
     default:
       return `<div${styleStr}>${content}${children}</div>`;
+
+      case 'Input':
+  return `<input data-bind="${props.name}" placeholder="${props.placeholder || ''}" class="border p-2 rounded w-full" />`;
+
+case 'Select':
+  const options = (props.options || '')
+    .split(',')
+    .map(opt => `<option value="${opt.trim()}">\${state["${props.name}"] === "${opt.trim()}" ? "✅ " : ""}${opt.trim()}</option>`)
+    .join('');
+  return `<select data-select="${props.name}" class="border p-2 rounded w-full">${options}</select>`;
+
   }
 }
 
