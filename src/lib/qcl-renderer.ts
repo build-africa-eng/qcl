@@ -1,10 +1,12 @@
-export function renderHTML(ast) {
-  const stateVars = ast.body
+import type { QCLNode } from './qcl-parser';
+
+export function renderHTML(ast: QCLNode): string {
+  const stateVars = (ast.body || [])
     .filter(n => n.type === "State")
     .map(n => `"${n.name}": ${JSON.stringify(n.value)}`)
     .join(",\n");
 
-  const htmlContent = ast.body
+  const htmlContent = (ast.body || [])
     .filter(n => n.type !== "State")
     .map(renderNode)
     .join('\n');
@@ -45,9 +47,9 @@ export function renderHTML(ast) {
   `;
 }
 
-function renderNode(node) {
-  const styles = [];
-  const attrs = [];
+function renderNode(node: QCLNode): string {
+  const styles: string[] = [];
+  const attrs: string[] = [];
 
   for (const [key, val] of Object.entries(node.props || {})) {
     if (key === 'bg') styles.push(`background-color:${val}`);
@@ -59,9 +61,7 @@ function renderNode(node) {
 
   const styleStr = styles.length ? ` style="${styles.join(';')}"` : '';
   const attrStr = attrs.length ? ' ' + attrs.join(' ') : '';
-  const content = (node.content || '')
-    .replace(/\{(\w+)\}/g, (_, v) => `\${state["${v}"] !== undefined ? state["${v}"] : \`{${v}}\`}`);
-
+  const content = (node.content || '').replace(/\{(\w+)\}/g, (_, v) => `\${state["${v}"] !== undefined ? state["${v}"] : \`{${v}}\`}`);
   const children = (node.body || []).map(renderNode).join('\n');
 
   switch (node.type) {
