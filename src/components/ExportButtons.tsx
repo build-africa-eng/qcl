@@ -60,6 +60,26 @@ export function ExportButtons({ qcl, html, ast }: Props) {
       >
         🗜️ Export Gzipped QCL
       </button>
+            <button
+        onClick={async () => {
+          try {
+            const res = await fetch('https://termbin.com:9999', {
+              method: 'POST',
+              body: qcl,
+            });
+
+            const url = await res.text();
+            alert('QCL pasted to:\n' + url);
+            navigator.clipboard.writeText(url);
+          } catch (err) {
+            alert('Failed to upload to termbin.');
+            console.error(err);
+          }
+        }}
+        className="px-3 py-1 border rounded bg-purple-100 dark:bg-purple-800 dark:text-white hover:bg-purple-200 dark:hover:bg-purple-700"
+      >
+        🔗 Share via Paste
+      </button>
     </div>
   );
 }
