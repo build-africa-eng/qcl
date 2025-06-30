@@ -51,10 +51,10 @@ export function renderHTML(ast: QCLNode): string {
 function renderNode(node: QCLNode): string {
   const styles: string[] = [];
   const attrs: string[] = [];
-
   const props = node.props || {};
   const tagType = node.type;
 
+  // Actions and styling
   for (const [key, val] of Object.entries(props)) {
     if (key === 'bg') styles.push(`background-color:${val}`);
     if (key === 'padding') styles.push(`padding:${val}px`);
@@ -62,18 +62,34 @@ function renderNode(node: QCLNode): string {
     if (key === 'weight') styles.push(`font-weight:${val}`);
     if (key === 'action') {
       const safeAction = val.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-      attrs.push(`onclick="window.run('${safeAction}')"`); 
+      attrs.push(`onclick="window.run('${safeAction}')"`);
     }
   }
 
   const styleStr = styles.length ? ` style="${styles.join(';')}"` : '';
   const attrStr = attrs.length ? ' ' + attrs.join(' ') : '';
 
-  const rawContent = (node.content || '').replace(/`/g, '\\`'); // escape template backticks
+  const rawContent = (node.content || '').replace(/`/g, '\\`');
   const content = rawContent.replace(/\{(\w+)\}/g, (_, v) => `\${state["${v}"] !== undefined ? state["${v}"] : \`{${v}}\`}`);
 
   const children = (node.body || []).map(renderNode).join('\n');
 
+  // Special case: If
+  if (tagType === 'If') {
+    const cond = props.condition || 'false';
+    return `\${${cond} ? \`${children}\` : ''}`;
+  }
+
+  // Special case: For
+  if (tagType === 'For') {
+    const loopItem = props.item || 'item';
+    const loopList = props.in || '[]';
+    return `\${(${loopList} || []).map(${loopItem} => \`${children.replace(/\{(\w+)\}/g, (_, v) => {
+      return v === loopItem ? `\$\{${loopItem}\}` : `\$\{state["${v}"]\}`;
+    })}\`).join('')}`;
+  }
+
+  // Regular components
   switch (tagType) {
     case 'Box':
       return `<div${styleStr} class="rounded p-4 shadow-sm mb-4">${children}</div>`;
@@ -86,7 +102,6 @@ function renderNode(node: QCLNode): string {
   }
 }
 
-// Optional: Simple HTML escaping for title
 function escapeHTML(str: string): string {
   return str.replace(/[&<>"']/g, tag =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[tag] || tag)
