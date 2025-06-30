@@ -6,9 +6,12 @@ import { renderHTML } from '../core/qcl-renderer.js';
 
 const defaultSource = `page title: Live QCL
   state count: 0
+  state name: "Guest"
   box bg: #eaf4ff, padding: 20
-    text size: 18, weight: bold: Count: {count}
-    button action: count++: Increment`;
+    text size: 18, weight: bold: Hello, {name}!
+    text : Count is {count}
+    input name: name, placeholder: Your name
+    button action: setState({ count: state.count + 1 }): Add 1`;
 
 export default function QCLPlayground() {
   const [source, setSource] = useState(defaultSource);
