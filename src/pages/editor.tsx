@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useState, useRef } from 'react';
 import { parseQCL } from '@/lib/qcl-parser';
 import QCLPreview from '@/components/QCLPreview';
@@ -8,41 +10,57 @@ const STORAGE_KEY = 'qcl-live-editor';
 
 export default function EditorPage() {
   const [qcl, setQcl] = useState('');
+  const [ast, setAst] = useState(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
-  // Load from localStorage on first render
+  // Load from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    setQcl(saved || defaultQCL);
+    const initial = saved || defaultQCL;
+    setQcl(initial);
+    setAst(parseQCL(initial));
   }, []);
 
-  // Save to localStorage on change
+  // Re-parse AST and store QCL on change
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, qcl);
+    try {
+      setAst(parseQCL(qcl));
+      localStorage.setItem(STORAGE_KEY, qcl);
+    } catch (e) {
+      console.error('QCL parse error:', e);
+    }
   }, [qcl]);
 
-  const ast = parseQCL(qcl);
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-      <textarea
-        value={qcl}
-        onChange={e => setQcl(e.target.value)}
-        className="w-full h-[500px] p-4 border rounded font-mono text-sm resize-none"
-      />
-      <div className="p-4 flex items-center justify-between">
-        <h1 className="text-lg font-semibold">QCL Live Editor</h1>
-        <ThemeToggle />
-      </div>
-      <div className="border rounded p-4 bg-white shadow space-y-4">
-        <div ref={previewRef}>
-          <QCLPreview ast={ast} />
+    <div className="grid md:grid-cols-2 gap-6 p-6 min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">QCL Live Editor</h1>
+          <ThemeToggle />
         </div>
-        <ExportButtons
-          qcl={qcl}
-          html={previewRef.current?.innerHTML || ''}
-          ast={ast}
+
+        <textarea
+          value={qcl}
+          onChange={(e) => setQcl(e.target.value)}
+          className="w-full h-[500px] p-4 border rounded font-mono text-sm resize-none bg-white dark:bg-gray-800 dark:text-white"
         />
+      </div>
+
+      <div className="space-y-4">
+        <div
+          ref={previewRef}
+          className="border rounded p-4 shadow bg-white dark:bg-gray-800"
+        >
+          {ast && <QCLPreview ast={ast} />}
+        </div>
+
+        {ast && (
+          <ExportButtons
+            qcl={qcl}
+            html={previewRef.current?.innerHTML || ''}
+            ast={ast}
+          />
+        )}
       </div>
     </div>
   );
