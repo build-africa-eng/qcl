@@ -19,8 +19,18 @@ export function renderHTML(ast: QCLNode): string {
         ${stateVars}
       };
 
+      function safeEval(expr, state) {
+        try {
+          return Function("state", '"use strict"; with (state) { return (' + expr + ') }')(state);
+        } catch (e) {
+          return '{' + expr + '}';
+        }
+      }
+
       function render() {
-        const html = \`${htmlContent}\`;
+        const html = \`${htmlContent}\`.replace(/\\{([^}]+)\\}/g, (_, expr) => {
+          return safeEval(expr.trim(), state);
+        });
         document.getElementById("qcl-app").innerHTML = html;
         bindInputs();
       }
@@ -70,7 +80,7 @@ export function renderHTML(ast: QCLNode): string {
 
 function safeEval(expr: string, state: Record<string, any>) {
   try {
-    return Function('state', `with (state) { return (${expr}); }`)(state);
+    return Function('state', `"use strict"; with (state) { return (${expr}); }`)(state);
   } catch (e) {
     return `{${expr}}`; // fallback if broken
   }
@@ -82,7 +92,6 @@ function renderNode(node: QCLNode): string {
   const props = node.props || {};
   const tagType = node.type;
 
-  // === Handle actions and inline styles ===
   for (const [key, val] of Object.entries(props)) {
     if (key === 'bg') styles.push(`background-color:${val}`);
     if (key === 'padding') styles.push(`padding:${val}px`);
@@ -97,30 +106,32 @@ function renderNode(node: QCLNode): string {
   const styleStr = styles.length ? ` style="${styles.join(';')}"` : '';
   const attrStr = attrs.length ? ' ' + attrs.join(' ') : '';
 
-  // === Content with state injection ===
   const rawContent = (node.content || '').replace(/`/g, '\\`');
   const content = rawContent.replace(/\{([^}]+)\}/g, (_, expr) => {
-  return `\${safeEval(\`${expr.trim()}\`, state)}`;
-});
+    return `\${safeEval(\`${expr.trim()}\`, state)}`;
+  });
 
-  // === Recursively render children ===
   const children = (node.body || []).map(renderNode).join('\n');
 
-  // === Special cases ===
   if (tagType === 'If') {
     const cond = props.condition || 'false';
-    return `\${${cond} ? \`${children}\` : ''}`;
+    return `\${safeEval(\`${cond}\`, state) ? \`${children}\` : ''}`;
   }
 
   if (tagType === 'For') {
     const loopItem = props.item || 'item';
     const loopList = props.in || '[]';
-    return `\${(${loopList}).map(${loopItem} => \`${children.replace(/\{(\w+)\}/g, (_, v) => {
-      return v === loopItem ? `\$\{${loopItem}\}` : `\$\{state["${v}"]\}`;
-    })}\`).join('')}`;
+    return `\${(() => {
+      try {
+        return (${loopList}).map(${loopItem} => \`${children.replace(/\{(\w+)\}/g, (_, v) => {
+          return v === loopItem ? `\$\{${loopItem}\}` : `\$\{state["${v}"]\}`;
+        })}\`).join('');
+      } catch (e) {
+        return '<div style="color:red">Loop error: ' + e.message + '</div>';
+      }
+    })()}`;
   }
 
-  // === Built-in tags ===
   switch (tagType) {
     case 'Box':
       return `<div${styleStr} class="rounded p-4 shadow-sm mb-4">${children}</div>`;
@@ -130,16 +141,15 @@ function renderNode(node: QCLNode): string {
       return `<button${attrStr} class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">${content}</button>`;
     case 'Input':
       return `<input data-bind="${props.name}" placeholder="${props.placeholder || ''}" class="border p-2 rounded w-full" />`;
-      case 'SlotWrapper':
-  return children; // children already injected by parser
     case 'Select':
       const options = (props.options || '')
         .split(',')
         .map(opt => `<option value="${opt.trim()}">\${state["${props.name}"] === "${opt.trim()}" ? "✅ " : ""}${opt.trim()}</option>`)
         .join('');
       return `<select data-select="${props.name}" class="border p-2 rounded w-full">${options}</select>`;
+    case 'SlotWrapper':
+      return children;
     default:
-      // === Custom component fallback ===
       return `<div${styleStr}>${content}${children}</div>`;
   }
 }
