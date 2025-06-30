@@ -27,6 +27,10 @@ export default function EditorPage() {
         onChange={e => setQcl(e.target.value)}
         className="w-full h-[500px] p-4 border rounded font-mono text-sm resize-none"
       />
+      <div className="p-4 flex items-center justify-between">
+  <h1 className="text-lg font-semibold">QCL Live Editor</h1>
+  <ThemeToggle />
+</div>
       <div className="border rounded p-4 bg-white shadow">
         <QCLPreview ast={ast} />
       </div>
