@@ -1,4 +1,3 @@
-// src/lib/qcl-parser.ts
 export type QCLNode = {
   type: string;
   title?: string;
@@ -7,7 +6,7 @@ export type QCLNode = {
   props?: Record<string, string>;
   content?: string;
   body?: QCLNode[];
-  slotName?: string; 
+  slotName?: string;
 };
 
 export function parseQCL(source: string): QCLNode {
@@ -24,14 +23,14 @@ export function parseQCL(source: string): QCLNode {
     const line = rawLine.trim();
     if (indent === -1) continue;
 
-    // === Handle page title ===
+    // === Page title ===
     if (line.startsWith('page ')) {
       const titleMatch = line.match(/title:\s*(.+)/);
       if (titleMatch) root.title = titleMatch[1].trim();
       continue;
     }
 
-    // === Handle state ===
+    // === State variable ===
     if (line.startsWith('state ')) {
       const match = line.match(/^state (\w+):\s*(.+)$/);
       if (match) {
@@ -47,18 +46,22 @@ export function parseQCL(source: string): QCLNode {
       continue;
     }
 
-    // === Start a component ===
+    // === Component definition ===
     if (line.startsWith('component ')) {
       const match = line.match(/^component (\w+)\s*(.*)$/);
       if (match) {
         const [, name, argsStr] = match;
-        currentComponent = { name, args: argsStr.split(',').map(s => s.trim()).filter(Boolean), body: [] };
+        currentComponent = {
+          name,
+          args: argsStr.split(',').map(s => s.trim()).filter(Boolean),
+          body: [],
+        };
         stack.push({ indent, node: { type: 'ComponentDef', body: currentComponent.body } });
       }
       continue;
     }
 
-    // === If we're in a component def, handle its body ===
+    // === If inside a component body ===
     if (currentComponent) {
       while (stack.length && indent <= stack[stack.length - 1].indent) {
         stack.pop();
@@ -66,86 +69,27 @@ export function parseQCL(source: string): QCLNode {
       const parent = stack[stack.length - 1].node;
       if (!parent.body) parent.body = [];
 
-      const [tag] = line.split(/\s+/);
-      const props: Record<string, string> = {};
-      let content = '';
-
-      if (line.includes(':')) {
-        const [propPart, cont] = line.split(/:(.+)/);
-        content = cont ? cont.trim() : '';
-        const kvPairs = propPart.replace(tag, '').split(',').map(p => p.trim()).filter(Boolean);
-        for (let pair of kvPairs) {
-          const [k, v] = pair.split(':').map(p => p.trim());
-          if (k && v) props[k] = v;
-        }
-      }
-
-      const node: QCLNode = {
-        type: tag.charAt(0).toUpperCase() + tag.slice(1),
-        props,
-        content,
-        body: [],
-      };
-
+      const node = parseNode(line, indent);
       parent.body.push(node);
       stack.push({ indent, node });
       continue;
     }
 
-// === End component def ===
-if (currentComponent && indent <= stack[stack.length - 1].indent) {
-  const { name, args, body } = currentComponent;
-  components[name] = {
-    args,
-    body: JSON.parse(JSON.stringify(body)), // deep copy
-  };
-  currentComponent = null;
-  continue;
-}
-
-    // === Handle regular tag or component usage ===
-    const [tag] = line.split(/\s+/);
-    const props: Record<string, string> = {};
-    let content = '';
-
-    if (line.includes(':')) {
-      const [propPart, cont] = line.split(/:(.+)/);
-      content = cont ? cont.trim() : '';
-      const kvPairs = propPart.replace(tag, '').split(',').map(p => p.trim()).filter(Boolean);
-      for (let pair of kvPairs) {
-        const [k, v] = pair.split(':').map(p => p.trim());
-        if (k && v) props[k] = v;
-      }
+    // === End component def ===
+    if (currentComponent && indent <= stack[stack.length - 1].indent) {
+      const { name, args, body } = currentComponent;
+      components[name] = {
+        args,
+        body: JSON.parse(JSON.stringify(body)),
+      };
+      currentComponent = null;
+      continue;
     }
-    // Detect slot name (for slot nodes or usage)
-if (tag.toLowerCase() === 'slot' && props.name) {
-  node.slotName = props.name;
-}
 
-    const node: QCLNode = {
-      type: tag.charAt(0).toUpperCase() + tag.slice(1),
-      props,
-      content,
-      body: [],
-    };
+    // === Outside: parse regular tag or component ===
+    const node = parseNode(line, indent);
 
-  // === If it's a known component, expand ===
-if (components[tag]) {
-  const def = components[tag];
-
-  // Group children by slot name (default is '_default')
-  const slotGroups: Record<string, QCLNode[]> = {};
-  for (const child of node.body || []) {
-    const slot = child.slotName || '_default';
-    if (!slotGroups[slot]) slotGroups[slot] = [];
-    slotGroups[slot].push(child);
-  }
-
-  const clone = JSON.parse(JSON.stringify(def.body));
-  const injected = injectProps(clone, props, slotGroups);
-  node.body = injected;
-}
-
+    // Collect children until indent increases again
     while (stack.length && indent <= stack[stack.length - 1].indent) {
       stack.pop();
     }
@@ -153,13 +97,61 @@ if (components[tag]) {
     const parent = stack[stack.length - 1].node;
     if (!parent.body) parent.body = [];
     parent.body.push(node);
+
+    // === If it's a known component, inject props and slots ===
+    if (components[node.type]) {
+      const def = components[node.type];
+
+      // Group children by slot name
+      const slotGroups: Record<string, QCLNode[]> = {};
+      for (const child of node.body || []) {
+        const slot = child.slotName || '_default';
+        if (!slotGroups[slot]) slotGroups[slot] = [];
+        slotGroups[slot].push(child);
+      }
+
+      const clone = JSON.parse(JSON.stringify(def.body));
+      const injected = injectProps(clone, node.props || {}, slotGroups);
+      node.body = injected;
+    }
+
     stack.push({ indent, node });
   }
 
   return root;
 }
 
-// Replace {name} with props["name"] inside component body
+// === Parse a line into a node ===
+function parseNode(line: string, indent: number): QCLNode {
+  const [tag] = line.split(/\s+/);
+  const props: Record<string, string> = {};
+  let content = '';
+
+  if (line.includes(':')) {
+    const [propPart, cont] = line.split(/:(.+)/);
+    content = cont ? cont.trim() : '';
+    const kvPairs = propPart.replace(tag, '').split(',').map(p => p.trim()).filter(Boolean);
+    for (let pair of kvPairs) {
+      const [k, v] = pair.split(':').map(p => p.trim());
+      if (k && v) props[k] = v;
+    }
+  }
+
+  const node: QCLNode = {
+    type: tag.charAt(0).toUpperCase() + tag.slice(1),
+    props,
+    content,
+    body: [],
+  };
+
+  if (tag.toLowerCase() === 'slot' && props.name) {
+    node.slotName = props.name;
+  }
+
+  return node;
+}
+
+// === Inject props + slot content ===
 function injectProps(
   body: QCLNode[],
   props: Record<string, string>,
@@ -167,14 +159,14 @@ function injectProps(
 ): QCLNode[] {
   const traverse = (node: QCLNode): QCLNode => {
     if (node.type === 'Slot') {
-  const slot = node.slotName || '_default';
-  return {
-    type: 'SlotWrapper',
-    body: (slotGroups[slot] || []).map(traverse),
-  };
-}
+      const slot = node.slotName || '_default';
+      return {
+        type: 'SlotWrapper',
+        body: (slotGroups[slot] || []).map(traverse),
+      };
+    }
 
-    const newNode: QCLNode = {
+    return {
       ...node,
       content: node.content?.replace(/\{(\w+)\}/g, (_, key) => `{${props[key] || key}}`),
       props: Object.fromEntries(
@@ -182,9 +174,7 @@ function injectProps(
       ),
       body: node.body ? node.body.map(traverse) : [],
     };
-    return newNode;
   };
 
   return body.map(traverse);
 }
-
