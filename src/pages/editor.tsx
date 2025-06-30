@@ -5,6 +5,10 @@ import { parseQCL } from '@/lib/qcl-parser';
 import QCLPreview from '@/components/QCLPreview';
 import ThemeToggle from '@/components/ThemeToggle';
 import { ExportButtons } from '@/components/ExportButtons';
+import type { QCLNode } from '@/lib/qcl-parser';
+
+const [ast, setAst] = useState<QCLNode | null>(null);
+
 
 const STORAGE_KEY = 'qcl-live-editor';
 
