@@ -7,14 +7,11 @@ import ThemeToggle from '@/components/ThemeToggle';
 import { ExportButtons } from '@/components/ExportButtons';
 import type { QCLNode } from '@/lib/qcl-parser';
 
-const [ast, setAst] = useState<QCLNode | null>(null);
-
-
 const STORAGE_KEY = 'qcl-live-editor';
 
 export default function EditorPage() {
   const [qcl, setQcl] = useState('');
-  const [ast, setAst] = useState(null);
+  const [ast, setAst] = useState<QCLNode | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
   // Load from localStorage on mount
