@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { parseQCL } from '@/lib/qcl-parser';
 import ThemeToggle from '@/components/ThemeToggle';
 import QCLPreview from '@/components/QCLPreview';
+import { ExportButtons } from '@/components/ExportButtons';
 
 const defaultQCL = `page title: Live Editor
 
@@ -22,18 +23,33 @@ export default function EditorPage() {
   const ast = parseQCL(qcl);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-      <textarea
-        value={qcl}
-        onChange={e => setQcl(e.target.value)}
-        className="w-full h-[500px] p-4 border rounded font-mono text-sm resize-none"
-      />
-      <div className="p-4 flex items-center justify-between">
-  <h1 className="text-lg font-semibold">QCL Live Editor</h1>
-  <ThemeToggle />
-</div>
-      <div className="border rounded p-4 bg-white shadow">
-        <QCLPreview ast={ast} />
+    <div className="min-h-screen bg-white text-black dark:bg-gray-900 dark:text-white transition-colors">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h1 className="text-xl font-semibold">QCL Live Editor</h1>
+        <div className="flex gap-4">
+          <ExportButtons
+            qcl={qcl}
+            html={`<html><body>${document?.getElementById('preview')?.innerHTML || ''}</body></html>`}
+          />
+          <ThemeToggle />
+        </div>
+      </div>
+
+      {/* Main Editor + Preview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+        <textarea
+          value={qcl}
+          onChange={e => setQcl(e.target.value)}
+          className="w-full h-[500px] p-4 border rounded font-mono text-sm resize-none bg-gray-100 dark:bg-gray-800 dark:text-white"
+        />
+
+        <div
+          id="preview"
+          className="border rounded p-4 bg-white dark:bg-gray-800 shadow"
+        >
+          <QCLPreview ast={ast} />
+        </div>
       </div>
     </div>
   );
