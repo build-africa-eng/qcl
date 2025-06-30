@@ -3,7 +3,8 @@ import type { QCLNode } from './qcl-parser';
 export function renderHTML(ast: QCLNode): string {
   const stateVars = (ast.body || [])
     .filter(n => n.type === "State")
-    .map(n => `"${n.name}": ${JSON.stringify(n.value)}`)
+    .map(n => (n.name ? `"${n.name}": ${JSON.stringify(n.value)}` : ''))
+    .filter(Boolean)
     .join(",\n");
 
   const htmlContent = (ast.body || [])
@@ -61,7 +62,9 @@ function renderNode(node: QCLNode): string {
 
   const styleStr = styles.length ? ` style="${styles.join(';')}"` : '';
   const attrStr = attrs.length ? ' ' + attrs.join(' ') : '';
-  const content = (node.content || '').replace(/\{(\w+)\}/g, (_, v) => `\${state["${v}"] !== undefined ? state["${v}"] : \`{${v}}\`}`);
+
+  const rawContent = (node.content || '').replace(/`/g, '\\`');
+  const content = rawContent.replace(/\{(\w+)\}/g, (_, v) => `\${state["${v}"] !== undefined ? state["${v}"] : \`{${v}}\`}`);
   const children = (node.body || []).map(renderNode).join('\n');
 
   switch (node.type) {
