@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect, useRef } from 'react';
 import { parseQCL } from '../core/qcl-parser.js';
 import { renderHTML } from '../core/qcl-renderer.js';
@@ -11,7 +13,7 @@ const defaultSource = `page title: Live QCL
 export default function QCLPlayground() {
   const [source, setSource] = useState(defaultSource);
   const [error, setError] = useState('');
-  const previewRef = useRef(null);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     try {
@@ -21,21 +23,25 @@ export default function QCLPlayground() {
       if (previewRef.current) {
         previewRef.current.innerHTML = html;
       }
-    } catch (err) {
-      setError(err.message);
+    } catch (err: any) {
+      setError(err.message || 'Unknown error');
     }
   }, [source]);
 
   return (
-    <div className="grid md:grid-cols-2 gap-6">
+    <div className="grid md:grid-cols-2 gap-6 p-4">
       <div>
         <h2 className="text-xl font-semibold mb-2">Edit QCL</h2>
         <textarea
-          className="w-full h-96 p-4 font-mono border rounded bg-white shadow"
+          className="w-full h-96 p-4 font-mono border rounded bg-white shadow resize-none"
           value={source}
           onChange={(e) => setSource(e.target.value)}
         />
-        {error && <pre className="mt-2 text-red-600 bg-red-50 p-2 rounded">{error}</pre>}
+        {error && (
+          <pre className="mt-2 text-red-600 bg-red-100 p-2 rounded whitespace-pre-wrap">
+            {error}
+          </pre>
+        )}
       </div>
       <div>
         <h2 className="text-xl font-semibold mb-2">Live Preview</h2>
