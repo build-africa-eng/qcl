@@ -1,9 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { QCLNode } from '@/lib/qcl-parser';
 import { gzip } from 'pako';
-import { useState } from 'react';
-
+import { QRCodeCanvas } from 'qrcode.react';
 
 type Props = {
   qcl: string;
@@ -12,11 +12,11 @@ type Props = {
 };
 
 export function ExportButtons({ qcl, html, ast }: Props) {
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+
   const download = (data: string | Uint8Array, filename: string, type: string) => {
     const blob = new Blob([data], { type });
     const url = URL.createObjectURL(blob);
-    const [shareUrl, setShareUrl] = useState<string | null>(null);
-
 
     const link = document.createElement('a');
     link.href = url;
@@ -30,6 +30,11 @@ export function ExportButtons({ qcl, html, ast }: Props) {
     URL.revokeObjectURL(url);
   };
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert('Copied to clipboard!');
+  };
+
   return (
     <div className="flex flex-wrap gap-2 mt-4">
       <button
@@ -40,23 +45,8 @@ export function ExportButtons({ qcl, html, ast }: Props) {
       </button>
 
       <button
-      onClick={async () => {
-  try {
-    const res = await fetch('https://termbin.com:9999', {
-      method: 'POST',
-      body: qcl,
-    });
-
-    const url = await res.text();
-    const cleanUrl = url.trim();
-    setShareUrl(cleanUrl);
-    alert('QCL pasted to:\n' + cleanUrl);
-    navigator.clipboard.writeText(cleanUrl);
-  } catch (err) {
-    alert('Failed to upload to termbin.');
-    console.error(err);
-  }
-}}
+        onClick={() => download(html, 'rendered.html', 'text/html')}
+        className="px-3 py-1 border rounded bg-green-100 dark:bg-green-800 dark:text-white hover:bg-green-200 dark:hover:bg-green-700"
       >
         🧾 Export HTML
       </button>
@@ -79,7 +69,8 @@ export function ExportButtons({ qcl, html, ast }: Props) {
       >
         🗜️ Export Gzipped QCL
       </button>
-            <button
+
+      <button
         onClick={async () => {
           try {
             const res = await fetch('https://termbin.com:9999', {
@@ -88,8 +79,10 @@ export function ExportButtons({ qcl, html, ast }: Props) {
             });
 
             const url = await res.text();
-            alert('QCL pasted to:\n' + url);
-            navigator.clipboard.writeText(url);
+            const cleanUrl = url.trim();
+            setShareUrl(cleanUrl);
+            alert('QCL pasted to:\n' + cleanUrl);
+            navigator.clipboard.writeText(cleanUrl);
           } catch (err) {
             alert('Failed to upload to termbin.');
             console.error(err);
@@ -99,19 +92,31 @@ export function ExportButtons({ qcl, html, ast }: Props) {
       >
         🔗 Share via Paste
       </button>
-      {shareUrl && (
-  <div className="mt-4 text-center w-full">
-    <p className="text-sm text-gray-800 dark:text-gray-200">
-      📎 Shared URL: <a href={shareUrl} target="_blank" rel="noreferrer" className="underline">{shareUrl}</a>
-    </p>
-    <img
-      src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(shareUrl)}`}
-      alt="QR Code"
-      className="mx-auto mt-2"
-    />
-  </div>
-)}
 
+      {shareUrl && (
+        <div className="mt-4 text-center w-full">
+          <p className="text-sm text-gray-800 dark:text-gray-200">
+            📎 Shared URL:{' '}
+            <a
+              href={shareUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="underline break-all"
+            >
+              {shareUrl}
+            </a>
+            <button
+              onClick={() => copyToClipboard(shareUrl)}
+              className="ml-2 text-xs px-2 py-0.5 border rounded bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500"
+            >
+              📋 Copy
+            </button>
+          </p>
+          <div className="flex justify-center mt-2">
+            <QRCodeCanvas value={shareUrl} size={150} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
