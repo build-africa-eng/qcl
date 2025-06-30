@@ -1,4 +1,14 @@
-export function parseQCL(source) {
+// src/lib/qcl-parser.ts
+export type QCLNode = {
+  type: string;
+  name?: string;
+  value?: string | number;
+  props?: Record<string, string>;
+  content?: string;
+  body?: QCLNode[];
+};
+
+export function parseQCL(source: string): QCLNode {
   const lines = source.split('\n').filter(line => line.trim() !== '');
 
   const root = { type: "Page", title: "", body: [] };
