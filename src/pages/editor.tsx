@@ -1,9 +1,9 @@
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { parseQCL } from '@/lib/qcl-parser';
 import ThemeToggle from '@/components/ThemeToggle';
-import QCLPreview from '@/components/QCLPreview';
+const QCLPreview = dynamic(() => import('@/components/QCLPreview'), { ssr: false });
 import { ExportButtons } from '@/components/ExportButtons';
-
 const defaultQCL = `page title: Live Editor
 
 state count: 0
