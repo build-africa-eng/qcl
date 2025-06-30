@@ -2,6 +2,8 @@
 
 import { QCLNode } from '@/lib/qcl-parser';
 import { gzip } from 'pako';
+import { useState } from 'react';
+
 
 type Props = {
   qcl: string;
@@ -13,6 +15,8 @@ export function ExportButtons({ qcl, html, ast }: Props) {
   const download = (data: string | Uint8Array, filename: string, type: string) => {
     const blob = new Blob([data], { type });
     const url = URL.createObjectURL(blob);
+    const [shareUrl, setShareUrl] = useState<string | null>(null);
+
 
     const link = document.createElement('a');
     link.href = url;
