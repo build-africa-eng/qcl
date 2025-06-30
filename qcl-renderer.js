@@ -1,68 +1,66 @@
-// qcl-renderer.js
-
 export function renderHTML(ast) {
-  const state = {};
-  const html = [];
+  const stateVars = ast.body
+    .filter(n => n.type === "State")
+    .map(n => `"${n.name}": ${JSON.stringify(n.value)}`)
+    .join(",\n");
 
-  // Inline styles from props
-  function styleFromProps(props) {
-    const css = [];
-    if (props.bg) css.push(`background:${props.bg}`);
-    if (props.padding) css.push(`padding:${props.padding}px`);
-    if (props.size) css.push(`font-size:${props.size}px`);
-    if (props.weight) css.push(`font-weight:${props.weight}`);
-    return css.join(';');
-  }
-
-  function renderNode(node) {
-    switch (node.type) {
-      case 'State':
-        state[node.name] = node.value;
-        return '';
-
-      case 'Text':
-        return `<p style="${styleFromProps(node.props)}">${bind(node.content)}</p>`;
-
-      case 'Box':
-        const boxChildren = (node.body || []).map(renderNode).join('\n');
-        return `<div style="${styleFromProps(node.props)}">${boxChildren}</div>`;
-
-      case 'Button':
-        return `<button onclick="run('${node.props.action}')" style="${styleFromProps(node.props)}">${bind(node.content)}</button>`;
-
-      default:
-        return '';
-    }
-  }
-
-  function bind(text) {
-    return text.replace(/{(\w+)}/g, (_, key) => `\${state["${key}"]}`);
-  }
-
-  const renderedHTML = ast.body.map(renderNode).join('\n');
+  const ui = ast.body
+    .filter(n => n.type !== "State")
+    .map(renderNode)
+    .join("\n");
 
   return `
 <h1>${ast.title}</h1>
 <div id="qcl-app"></div>
 
 <script type="module">
-  let state = ${JSON.stringify(state, null, 2)};
+  let state = {
+    ${stateVars}
+  };
 
   function run(code) {
     try {
-      eval(code);
+      with (state) { eval(code); }
       render();
     } catch (err) {
-      console.error('Action failed:', err);
+      console.error('❌ Action error:', err);
+      alert(err.message);
     }
   }
 
   function render() {
-    const html = \`${renderedHTML}\`;
+    const html = \`${ui}\`;
     document.getElementById('qcl-app').innerHTML = html;
   }
 
   render();
 </script>
-  `;
+`;
+}
+
+function renderNode(node) {
+  const styles = [];
+  const attrs = [];
+
+  for (const [key, val] of Object.entries(node.props || {})) {
+    if (["bg", "padding", "size", "weight"].includes(key)) {
+      if (key === "bg") styles.push(`background:${val}`);
+      if (key === "padding") styles.push(`padding:${val}px`);
+      if (key === "size") styles.push(`font-size:${val}px`);
+      if (key === "weight") styles.push(`font-weight:${val}`);
+    } else if (key === "action") {
+      attrs.push(`onclick="run('${val}')"`); // supports `count++`
+    }
+  }
+
+  const styleAttr = styles.length ? ` style="${styles.join(';')}"` : "";
+  const attrStr = attrs.join(' ');
+
+  const htmlContent = (node.content || "").replace(/\{(\w+)\}/g, (_, v) => `\${state["${v}"]}`);
+
+  if (node.type === "Box") return `<div${styleAttr}>${htmlContent}</div>`;
+  if (node.type === "Text") return `<p${styleAttr}>${htmlContent}</p>`;
+  if (node.type === "Button") return `<button ${attrStr}${styleAttr}>${htmlContent}</button>`;
+
+  return `<div${styleAttr}>${htmlContent}</div>`;
 }
