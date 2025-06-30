@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { QCLNode } from '@/lib/qcl-parser';
 
 type Props = {
@@ -8,14 +8,45 @@ type Props = {
 };
 
 export default function QCLPreview({ ast }: Props) {
-  const renderNode = (node: QCLNode, index: number) => {
+  const initialState: Record<string, any> = {};
+
+  // Build initial state from QCL AST
+  for (const node of ast.body || []) {
+    if (node.type === 'State' && node.name) {
+      initialState[node.name] = node.value;
+    }
+  }
+
+  const [state, setState] = useState(initialState);
+
+  // Safe interpolation with current state
+  const interpolate = (template: string) =>
+    template.replace(/\{(\w+)\}/g, (_, key) => String(state[key] ?? `{${key}}`));
+
+  // Parse simple `setState({ count: state.count + 1 })` expressions
+  const handleAction = (action: string) => {
+    if (!action.startsWith('setState')) return;
+
+    try {
+      // Safe context: only allow access to `state` and `setState`
+      const update = new Function('state', `return ${action.match(/\{(.+)\}/s)?.[0]}`)(state);
+      if (typeof update === 'object') {
+        setState(prev => ({ ...prev, ...update }));
+      }
+    } catch (err) {
+      console.error('Action error:', err);
+    }
+  };
+
+  // Render a single node
+  const renderNode = (node: QCLNode, index: number): React.ReactNode => {
     const { type, name, value, props = {}, content = '', body = [] } = node;
 
     switch (type.toLowerCase()) {
       case 'text':
         return (
           <p key={index} className="mb-2 text-gray-800 dark:text-gray-200 text-base">
-            {interpolate(content, ast)}
+            {interpolate(content)}
           </p>
         );
 
@@ -26,7 +57,8 @@ export default function QCLPreview({ ast }: Props) {
               name={props.name}
               placeholder={props.placeholder || ''}
               className="border px-2 py-1 rounded w-full"
-              disabled
+              value={state[props.name] ?? ''}
+              onChange={e => setState(prev => ({ ...prev, [props.name]: e.target.value }))}
             />
           </div>
         );
@@ -34,7 +66,12 @@ export default function QCLPreview({ ast }: Props) {
       case 'select':
         return (
           <div key={index} className="mb-4">
-            <select name={props.name} className="border px-2 py-1 rounded w-full" disabled>
+            <select
+              name={props.name}
+              className="border px-2 py-1 rounded w-full"
+              value={state[props.name]}
+              onChange={e => setState(prev => ({ ...prev, [props.name]: e.target.value }))}
+            >
               {(props.options?.split(',') || []).map((opt, i) => (
                 <option key={i} value={opt.trim()}>
                   {opt.trim()}
@@ -48,10 +85,10 @@ export default function QCLPreview({ ast }: Props) {
         return (
           <button
             key={index}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-            disabled
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            onClick={() => handleAction(props.action || '')}
           >
-            {interpolate(content, ast)}
+            {interpolate(content)}
           </button>
         );
 
@@ -66,31 +103,10 @@ export default function QCLPreview({ ast }: Props) {
           </div>
         );
 
-      case 'state':
-        // states are handled globally; no UI rendered directly
-        return null;
-
       default:
         return null;
     }
   };
 
-  return (
-    <div>
-      {ast?.body?.map((node, index) => renderNode(node, index))}
-    </div>
-  );
-}
-
-// Very basic template variable replacement: replaces {name} with value from state
-function interpolate(template: string, ast: QCLNode): string {
-  const stateMap: Record<string, string | number> = {};
-
-  for (const node of ast.body || []) {
-    if (node.type.toLowerCase() === 'state' && node.name) {
-      stateMap[node.name] = node.value ?? '';
-    }
-  }
-
-  return template.replace(/\{(\w+)\}/g, (_, key) => String(stateMap[key] ?? `{${key}}`));
+  return <div>{ast.body?.map(renderNode)}</div>;
 }
