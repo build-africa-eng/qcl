@@ -1,9 +1,7 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  swcMinify: true
+}
 
-export default defineConfig({
-  plugins: [react()],
-  css: {
-    postcss: './postcss.config.js'
-  }
-})
+export default nextConfig;
