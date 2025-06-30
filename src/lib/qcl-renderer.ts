@@ -110,27 +110,29 @@ function renderNode(node: QCLNode): string {
   }
 
   // Regular components
-  switch (tagType) {
-    case 'Box':
-      return `<div${styleStr} class="rounded p-4 shadow-sm mb-4">${children}</div>`;
-    case 'Text':
-      return `<p${styleStr} class="mb-2">${content}${children}</p>`;
-    case 'Button':
-      return `<button${attrStr} class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">${content}</button>`;
-    default:
-      return `<div${styleStr}>${content}${children}</div>`;
+switch (tagType) {
+  case 'Box':
+    return `<div${styleStr} class="rounded p-4 shadow-sm mb-4">${children}</div>`;
 
-      case 'Input':
-  return `<input data-bind="${props.name}" placeholder="${props.placeholder || ''}" class="border p-2 rounded w-full" />`;
+  case 'Text':
+    return `<p${styleStr} class="mb-2">${content}${children}</p>`;
 
-case 'Select':
-  const options = (props.options || '')
-    .split(',')
-    .map(opt => `<option value="${opt.trim()}">\${state["${props.name}"] === "${opt.trim()}" ? "✅ " : ""}${opt.trim()}</option>`)
-    .join('');
-  return `<select data-select="${props.name}" class="border p-2 rounded w-full">${options}</select>`;
+  case 'Button':
+    return `<button${attrStr} class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">${content}</button>`;
 
-  }
+  case 'Input':
+    return `<input data-bind="${props.name}" placeholder="${props.placeholder || ''}" class="border p-2 rounded w-full" />`;
+
+  case 'Select':
+    const options = (props.options || '')
+      .split(',')
+      .map(opt => `<option value="${opt.trim()}">\${state["${props.name}"] === "${opt.trim()}" ? "✅ " : ""}${opt.trim()}</option>`)
+      .join('');
+    return `<select data-select="${props.name}" class="border p-2 rounded w-full">${options}</select>`;
+
+  default:
+    return `<div${styleStr}>${content}${children}</div>`;
+ }
 }
 
 function escapeHTML(str: string): string {
