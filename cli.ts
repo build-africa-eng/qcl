@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import fs from 'fs';
-import path from 'path';
 import { parseQCL } from './src/lib/qcl-parser';
 import { renderHTML } from './src/lib/qcl-renderer';
 
