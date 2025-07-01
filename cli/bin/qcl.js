@@ -2,20 +2,18 @@
 import fs from 'fs';
 import path from 'path';
 import { parseQCL } from '../src/lib/qcl-parser.js';
-import { renderHTMLPage } from '../src/lib/qcl-renderer.js';
+import { renderQCLToHTML } from '../src/lib/render-to-html.js';
 
-const inputPath = process.argv[2];
-const outputPath = process.argv[3] || 'dist/index.html';
+const [,, inputPath, outputPath] = process.argv;
 
-if (!inputPath) {
-  console.error('❌ Usage: qcl <input.qcl> [output.html]');
+if (!inputPath || !outputPath) {
+  console.error('Usage: qcl <input.qcl> <output.html>');
   process.exit(1);
 }
 
-const source = fs.readFileSync(inputPath, 'utf-8');
-const ast = parseQCL(source);
-const html = renderHTMLPage(ast);
+const qclSource = fs.readFileSync(inputPath, 'utf-8');
+const ast = parseQCL(qclSource);
+const html = renderQCLToHTML(ast);
 
-fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, html);
-console.log(`✅ QCL compiled to ${outputPath}`);
+console.log(`✅ Generated: ${outputPath}`);
