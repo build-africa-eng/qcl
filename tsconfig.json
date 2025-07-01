@@ -27,6 +27,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": false
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx","cli.ts", "src", "types"],
   "exclude": ["node_modules"]
 }
