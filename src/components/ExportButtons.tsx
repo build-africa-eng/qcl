@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { QCLNode } from '@/lib/qcl-parser';
 import { gzip } from 'pako';
 import { QRCodeCanvas } from 'qrcode.react';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
+import { renderHTMLPage } from '@/lib/qcl-renderer'; // Make sure this exists
 
 type Props = {
   qcl: string;
@@ -29,6 +32,18 @@ export function ExportButtons({ qcl, html, ast }: Props) {
     setToast(`⬇️ Downloaded ${filename}`);
   };
 
+  const exportZip = async () => {
+    const zip = new JSZip();
+    zip.file('source.qcl', qcl);
+    zip.file('index.html', renderHTMLPage(ast || { type: 'Page', body: [] }));
+    if (ast) zip.file('ast.json', JSON.stringify(ast, null, 2));
+    zip.file('README.md', `# QCL Export\n\nThis bundle was generated from the QCL live editor.`);
+
+    const blob = await zip.generateAsync({ type: 'blob' });
+    saveAs(blob, 'qcl-export.zip');
+    setToast('📦 Exported QCL as zip!');
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -45,6 +60,7 @@ export function ExportButtons({ qcl, html, ast }: Props) {
   return (
     <div className="flex flex-wrap gap-2 mt-4 relative">
       {showToast}
+
       <button
         onClick={() => download(qcl, 'qcl-source.qcl', 'text/plain')}
         className="px-3 py-1 border rounded bg-blue-100 dark:bg-blue-800 dark:text-white hover:bg-blue-200 dark:hover:bg-blue-700"
@@ -76,6 +92,13 @@ export function ExportButtons({ qcl, html, ast }: Props) {
         className="px-3 py-1 border rounded bg-gray-100 dark:bg-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-600"
       >
         🗜️ Export Gzipped QCL
+      </button>
+
+      <button
+        onClick={exportZip}
+        className="px-3 py-1 border rounded bg-indigo-100 dark:bg-indigo-800 dark:text-white hover:bg-indigo-200 dark:hover:bg-indigo-700"
+      >
+        📦 Export Zip
       </button>
 
       <button
