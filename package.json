@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "build:qcl": "node cli/qcl.js ./example.qcl ./dist/index.html"
   },
   "dependencies": {
     "next": "^15.3.4",
