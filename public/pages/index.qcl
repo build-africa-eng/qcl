@@ -1,8 +1,5 @@
-title: Hello App
-
-state name = "World"
-
-Box {
-  Text { Hello {name} }
-  Input name
-}
+page title: QCL Demo
+  state count: 0
+  box bg: lightblue, padding: 10
+    text size: 18, weight: bold: Count: {count}
+    button action: count++: Increment
