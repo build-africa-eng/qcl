@@ -32,6 +32,26 @@ export default function EditorPage() {
     }
   }, [qcl]);
 
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setQcl(reader.result);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDownload = () => {
+    const blob = new Blob([qcl], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'my-qcl.qcl';
+    link.click();
+  };
+
   return (
     <div className="grid md:grid-cols-2 gap-6 p-6 min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="space-y-4">
@@ -45,6 +65,21 @@ export default function EditorPage() {
           onChange={(e) => setQcl(e.target.value)}
           className="w-full h-[500px] p-4 border rounded font-mono text-sm resize-none bg-white dark:bg-gray-800 dark:text-white"
         />
+
+        <div className="flex items-center gap-4">
+          <input
+            type="file"
+            accept=".qcl,.txt"
+            onChange={handleUpload}
+            className="text-sm file:mr-4 file:px-4 file:py-2 file:rounded file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+          />
+          <button
+            onClick={handleDownload}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Download QCL
+          </button>
+        </div>
       </div>
 
       <div className="space-y-4">
