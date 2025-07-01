@@ -6,7 +6,7 @@ import { gzip } from 'pako';
 import { QRCodeCanvas } from 'qrcode.react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-import { renderHTMLPage } from '@/lib/qcl-renderer'; // Make sure this exists
+import { renderHTML } from '@/lib/qcl-renderer'; // ✅ Corrected name
 
 type Props = {
   qcl: string;
@@ -35,9 +35,9 @@ export function ExportButtons({ qcl, html, ast }: Props) {
   const exportZip = async () => {
     const zip = new JSZip();
     zip.file('source.qcl', qcl);
-    zip.file('index.html', renderHTMLPage(ast || { type: 'Page', body: [] }));
+    zip.file('index.html', renderHTML(ast || { type: 'Page', body: [] }));
     if (ast) zip.file('ast.json', JSON.stringify(ast, null, 2));
-    zip.file('README.md', `# QCL Export\n\nThis bundle was generated from the QCL live editor.`);
+    zip.file('README.md', `# QCL Export\n\nGenerated at ${new Date().toISOString()}`);
 
     const blob = await zip.generateAsync({ type: 'blob' });
     saveAs(blob, 'qcl-export.zip');
