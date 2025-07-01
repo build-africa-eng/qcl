@@ -1,8 +1,13 @@
-title: Hello App
+title: Hello QCL
 
-state name = "World"
+state:
+  name: "Afrcan"
 
-Box {
-  Text { Hello {name} }
-  Input name
+Text {
+  content: "Welcome, {name}!"
+}
+
+Input {
+  name: "name"
+  placeholder: "Enter your name"
 }
