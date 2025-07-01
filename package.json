@@ -9,6 +9,9 @@
     "lint": "next lint",
     "build:qcl": "node cli/qcl.js ./example.qcl ./dist/index.html"
   },
+    "bin": {
+    "qcl": "./cli/qcl.js"
+  },
   "dependencies": {
     "next": "^15.3.4",
     "react": "^19.1.0",
