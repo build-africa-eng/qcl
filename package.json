@@ -3,15 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "build:qcl": "node cli/qcl.js ./example.qcl ./dist/index.html"
-  },
-    "bin": {
-    "qcl": "./cli/qcl.js"
-  },
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "next lint",
+  "build:qcl": "npm run build:cli && node cli/cli.js example.qcl dist/index.html",
+  "build:cli": "tsc cli.ts --outDir cli --module commonjs --esModuleInterop"
+},
+ "bin": {
+ "qcl": "./cli/cli.js"
+}
   "dependencies": {
     "next": "^15.3.4",
     "react": "^19.1.0",
