@@ -1,0 +1,7 @@
+page title: Hello QCL
+
+state name: "Alice"
+
+box
+  text size: 20 : Hello, {name}!
+  input name: name, placeholder: Your name
