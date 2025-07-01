@@ -1,0 +1,12 @@
+.next
+public
+pages
+app
+components
+tailwind.config.ts
+postcss.config.cjs
+next.config.js
+*.qcl
+*.html
+.editorconfig
+vercel.json
