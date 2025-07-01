@@ -1,5 +1,22 @@
-page title: QCL Demo
-  state count: 0
-  box bg: lightblue, padding: 10
-    text size: 18, weight: bold: Count: {count}
-    button action: count++: Increment
+title: QCL Demo
+
+State name = "World"
+State showCard = true
+State languages = ["TypeScript", "Python", "Rust"]
+
+Box:
+  Text size=24 weight=bold: Hello, {name}!
+  Input bind=name placeholder="Enter your name"
+
+  Checkbox bind=showCard: Show Card?
+
+  If condition=showCard:
+    Card user={ { name: name, role: "Explorer" } }
+
+  Divider:
+
+  Select bind=selectedLang options="TypeScript, Python, Rust"
+  Text: You chose: {selectedLang}
+
+  For item=lang in=languages:
+    Text: • {lang}
