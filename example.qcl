@@ -1,7 +1,8 @@
-page title: Hello QCL
+title: Hello App
 
-state name: "Alice"
+state name = "World"
 
-box
-  text size: 20 : Hello, {name}!
-  input name: name, placeholder: Your name
+Box {
+  Text { Hello {name} }
+  Input name
+}
